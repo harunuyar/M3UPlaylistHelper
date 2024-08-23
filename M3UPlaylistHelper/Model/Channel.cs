@@ -2,6 +2,8 @@
 
 public class Channel
 {
+    public const int LogoWidth = 50;
+
     /// <summary>
     /// The category of the channel. Based on the group-title attribute of the channel.
     /// </summary>
@@ -34,6 +36,10 @@ public class Channel
 
     public bool IsIncluded { get; set; }
 
+    public Image? Logo { get; set; }
+
+    private bool AttemptedLogoLoad { get; set; }
+
     public Channel(Category category, string name, string url, string? logoUrl, string? tvgId, string? tvgName)
     {
         Category = category;
@@ -43,5 +49,33 @@ public class Channel
         TvgId = tvgId;
         TvgName = tvgName;
         IsIncluded = true;
+        Logo = null;
+        AttemptedLogoLoad = false;
+    }
+
+    public async Task LoadLogoAsync()
+    {
+        if (AttemptedLogoLoad)
+        {
+            return;
+        }
+
+        AttemptedLogoLoad = true;
+
+        if (LogoUrl == null)
+        {
+            return;
+        }
+
+        try
+        {
+            CancellationToken cancellationToken = new CancellationTokenSource(5000).Token;
+            Logo = Image.FromStream(await new HttpClient().GetStreamAsync(LogoUrl, cancellationToken));
+            Logo = new Bitmap(Logo, new Size(LogoWidth, Logo.Height * LogoWidth / Logo.Width));
+        }
+        catch (Exception)
+        {
+            Console.Error.WriteLine($"Failed to load logo for channel: {Name}, Logo url: {LogoUrl}");
+        }
     }
 }

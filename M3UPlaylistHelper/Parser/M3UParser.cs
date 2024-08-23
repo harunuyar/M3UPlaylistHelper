@@ -14,12 +14,25 @@ public static class M3UParser
         return match.Success ? match.Groups[1].Value : null;
     }
 
-    public static async Task<List<Category>> ParseAsync(string filename, CancellationToken cancellationToken)
+    public static async Task<List<Category>> ParseM3ULink(string url, CancellationToken cancellationToken)
+    {
+        var client = new HttpClient();
+        var response = await client.GetAsync(url, cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        return await ParseAsync(lines, cancellationToken);
+    }
+
+    public static async Task<List<Category>> ParseFileAsync(string filename, CancellationToken cancellationToken)
+    {
+        var lines = await File.ReadAllLinesAsync(filename, cancellationToken);
+        return await ParseAsync(lines, cancellationToken);
+    }
+
+    public static Task<List<Category>> ParseAsync(string[] lines, CancellationToken cancellationToken)
     {
         Dictionary<string, Category> categoryDict = [];
         List<Category> categories = [];
-
-        var lines = await File.ReadAllLinesAsync(filename, cancellationToken);
 
         for (int i = 0; i < lines.Length; i++)
         {
@@ -67,7 +80,7 @@ public static class M3UParser
             }
         }
 
-        return categories;
+        return Task.FromResult(categories);
     }
 
     public static async Task CreateM3UFileAsync(List<Category> categories, string filename, CancellationToken cancellationToken)
