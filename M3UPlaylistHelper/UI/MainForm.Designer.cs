@@ -113,6 +113,7 @@ partial class MainForm
         helpToolStripMenuItem.Name = "helpToolStripMenuItem";
         helpToolStripMenuItem.Size = new Size(65, 29);
         helpToolStripMenuItem.Text = "Help";
+        helpToolStripMenuItem.Click += helpToolStripMenuItem_Click;
         // 
         // mainPanel
         // 
@@ -125,7 +126,7 @@ partial class MainForm
         // 
         // splitContainer
         // 
-        splitContainer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        splitContainer.Dock = DockStyle.Fill;
         splitContainer.FixedPanel = FixedPanel.Panel1;
         splitContainer.Location = new Point(0, 0);
         splitContainer.Name = "splitContainer";
@@ -143,14 +144,14 @@ partial class MainForm
         splitContainer.Panel2.Controls.Add(buttonSelectAllChannels);
         splitContainer.Panel2.Controls.Add(labelSelectedCategory);
         splitContainer.Panel2.Controls.Add(dataGridViewChannels);
-        splitContainer.Size = new Size(1691, 876);
+        splitContainer.Size = new Size(1691, 919);
         splitContainer.SplitterDistance = 450;
         splitContainer.TabIndex = 0;
         // 
         // buttonClearAllCategories
         // 
         buttonClearAllCategories.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        buttonClearAllCategories.Location = new Point(132, 842);
+        buttonClearAllCategories.Location = new Point(132, 885);
         buttonClearAllCategories.Name = "buttonClearAllCategories";
         buttonClearAllCategories.Size = new Size(123, 34);
         buttonClearAllCategories.TabIndex = 2;
@@ -170,7 +171,7 @@ partial class MainForm
         // buttonSelectAllCategories
         // 
         buttonSelectAllCategories.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        buttonSelectAllCategories.Location = new Point(3, 842);
+        buttonSelectAllCategories.Location = new Point(3, 885);
         buttonSelectAllCategories.Name = "buttonSelectAllCategories";
         buttonSelectAllCategories.Size = new Size(123, 34);
         buttonSelectAllCategories.TabIndex = 1;
@@ -188,14 +189,14 @@ partial class MainForm
         dataGridViewCategories.Location = new Point(0, 28);
         dataGridViewCategories.Name = "dataGridViewCategories";
         dataGridViewCategories.RowHeadersWidth = 62;
-        dataGridViewCategories.Size = new Size(450, 808);
+        dataGridViewCategories.Size = new Size(450, 851);
         dataGridViewCategories.TabIndex = 1;
         dataGridViewCategories.Click += DataGridViewCategories_Click;
         // 
         // buttonClearAllChannels
         // 
         buttonClearAllChannels.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        buttonClearAllChannels.Location = new Point(132, 842);
+        buttonClearAllChannels.Location = new Point(132, 885);
         buttonClearAllChannels.Name = "buttonClearAllChannels";
         buttonClearAllChannels.Size = new Size(123, 34);
         buttonClearAllChannels.TabIndex = 4;
@@ -206,7 +207,7 @@ partial class MainForm
         // buttonSelectAllChannels
         // 
         buttonSelectAllChannels.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        buttonSelectAllChannels.Location = new Point(3, 842);
+        buttonSelectAllChannels.Location = new Point(3, 885);
         buttonSelectAllChannels.Name = "buttonSelectAllChannels";
         buttonSelectAllChannels.Size = new Size(123, 34);
         buttonSelectAllChannels.TabIndex = 3;
@@ -232,7 +233,7 @@ partial class MainForm
         dataGridViewChannels.Location = new Point(0, 28);
         dataGridViewChannels.Name = "dataGridViewChannels";
         dataGridViewChannels.RowHeadersWidth = 62;
-        dataGridViewChannels.Size = new Size(1237, 808);
+        dataGridViewChannels.Size = new Size(1237, 851);
         dataGridViewChannels.TabIndex = 0;
         // 
         // MainForm

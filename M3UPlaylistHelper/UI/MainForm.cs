@@ -265,4 +265,9 @@ public partial class MainForm : Form
     {
         Application.Exit();
     }
+
+    private void helpToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        MessageBox.Show("1. Open M3U file or URL.\n2. Edit categories and channels\n3. Save", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
 }
