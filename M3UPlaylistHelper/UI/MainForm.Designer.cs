@@ -46,6 +46,7 @@ partial class MainForm
         buttonSelectAllChannels = new Button();
         labelSelectedCategory = new Label();
         dataGridViewChannels = new DataGridView();
+        checkBoxDownloadLogos = new CheckBox();
         menuStrip.SuspendLayout();
         mainPanel.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
@@ -140,6 +141,7 @@ partial class MainForm
         // 
         // splitContainer.Panel2
         // 
+        splitContainer.Panel2.Controls.Add(checkBoxDownloadLogos);
         splitContainer.Panel2.Controls.Add(buttonClearAllChannels);
         splitContainer.Panel2.Controls.Add(buttonSelectAllChannels);
         splitContainer.Panel2.Controls.Add(labelSelectedCategory);
@@ -238,6 +240,18 @@ partial class MainForm
         dataGridViewChannels.Size = new Size(1237, 851);
         dataGridViewChannels.TabIndex = 0;
         // 
+        // checkBoxDownloadLogos
+        // 
+        checkBoxDownloadLogos.AutoSize = true;
+        checkBoxDownloadLogos.Checked = true;
+        checkBoxDownloadLogos.CheckState = CheckState.Checked;
+        checkBoxDownloadLogos.Location = new Point(1060, 889);
+        checkBoxDownloadLogos.Name = "checkBoxDownloadLogos";
+        checkBoxDownloadLogos.Size = new Size(174, 29);
+        checkBoxDownloadLogos.TabIndex = 5;
+        checkBoxDownloadLogos.Text = "Download Logos";
+        checkBoxDownloadLogos.UseVisualStyleBackColor = true;
+        // 
         // MainForm
         // 
         AutoScaleDimensions = new SizeF(10F, 25F);
@@ -283,4 +297,5 @@ partial class MainForm
     private Button buttonClearAllChannels;
     private Button buttonSelectAllChannels;
     private ToolStripMenuItem openURLToolStripMenuItem;
+    private CheckBox checkBoxDownloadLogos;
 }

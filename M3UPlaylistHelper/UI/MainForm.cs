@@ -168,11 +168,23 @@ public partial class MainForm : Form
         dataGridViewChannels.Columns["Url"].DisplayIndex = 3;
         dataGridViewChannels.Columns["Url"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
-        Task.Run(async () =>
+        if (checkBoxDownloadLogos.Checked)
         {
-            await Task.WhenAll(category.Channels.Select(c => c.LoadLogoAsync()));
-            Invoke(new Action(() => dataGridViewChannels.Refresh()));
-        });
+            Task.Run(async () =>
+            {
+                ParallelOptions options = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount - 1
+                };
+
+                await Parallel.ForEachAsync(category.Channels, options, async (channel, token) =>
+                {
+                    await channel.LoadLogoAsync();
+                });
+
+                Invoke(new Action(() => dataGridViewChannels.Refresh()));
+            });
+        }
     }
 
     private async void SaveToolStripMenuItem_Click(object sender, EventArgs e)

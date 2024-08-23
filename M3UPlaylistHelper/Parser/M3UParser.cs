@@ -16,7 +16,14 @@ public static class M3UParser
 
     public static async Task<List<Category>> ParseM3ULink(string url, CancellationToken cancellationToken)
     {
-        var client = new HttpClient();
+        var client = new HttpClient()
+        {
+            DefaultRequestHeaders =
+            {
+                { "User-Agent", "M3UPlaylistHelper" }, // Some providers block requests without a user agent
+            }
+        };
+
         var response = await client.GetAsync(url, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
         var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
