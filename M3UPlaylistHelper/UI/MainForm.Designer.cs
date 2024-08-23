@@ -188,6 +188,7 @@ partial class MainForm
         dataGridViewCategories.GridColor = SystemColors.Control;
         dataGridViewCategories.Location = new Point(0, 28);
         dataGridViewCategories.Name = "dataGridViewCategories";
+        dataGridViewCategories.RowHeadersVisible = false;
         dataGridViewCategories.RowHeadersWidth = 62;
         dataGridViewCategories.Size = new Size(450, 851);
         dataGridViewCategories.TabIndex = 1;
@@ -232,6 +233,7 @@ partial class MainForm
         dataGridViewChannels.GridColor = SystemColors.Control;
         dataGridViewChannels.Location = new Point(0, 28);
         dataGridViewChannels.Name = "dataGridViewChannels";
+        dataGridViewChannels.RowHeadersVisible = false;
         dataGridViewChannels.RowHeadersWidth = 62;
         dataGridViewChannels.Size = new Size(1237, 851);
         dataGridViewChannels.TabIndex = 0;
