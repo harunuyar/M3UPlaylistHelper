@@ -14,6 +14,16 @@ public static class M3UParser
 
     private static readonly HttpClient httpClient = CreateHttpClient();
 
+    private static readonly Encoding strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    private static readonly Encoding windows1252 = CreateWindows1252();
+
+    private static Encoding CreateWindows1252()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(1252);
+    }
+
     private static HttpClient CreateHttpClient()
     {
         var handler = new HttpClientHandler
@@ -40,15 +50,56 @@ public static class M3UParser
             throw new HttpRequestException($"The server returned {(int)response.StatusCode} ({response.ReasonPhrase}).", null, response.StatusCode);
         }
 
-        var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        return Parse(content);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var charset = response.Content.Headers.ContentType?.CharSet;
+        return Parse(Decode(bytes, charset));
     }
 
     public static async Task<Playlist> ParseFileAsync(string filename, CancellationToken cancellationToken)
     {
-        var content = await File.ReadAllTextAsync(filename, cancellationToken);
-        return Parse(content);
+        var bytes = await File.ReadAllBytesAsync(filename, cancellationToken);
+        return Parse(Decode(bytes, null));
     }
+
+    /// <summary>
+    /// Decodes playlist bytes. M3U8 is UTF-8, but plenty of older .m3u files are saved in the Windows ANSI code page;
+    /// reading those as UTF-8 would replace accented characters with '?' and saving would make that permanent.
+    /// </summary>
+    public static string Decode(byte[] bytes, string? charset)
+    {
+        if (!string.IsNullOrWhiteSpace(charset))
+        {
+            try
+            {
+                return StripBom(Encoding.GetEncoding(charset.Trim('"')).GetString(bytes));
+            }
+            catch (ArgumentException)
+            {
+                // Unknown charset, detect it below
+            }
+        }
+
+        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+        {
+            return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+        }
+
+        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+        {
+            return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+        }
+
+        try
+        {
+            return StripBom(strictUtf8.GetString(bytes));
+        }
+        catch (DecoderFallbackException)
+        {
+            return windows1252.GetString(bytes);
+        }
+    }
+
+    private static string StripBom(string text) => text.Length > 0 && text[0] == '\uFEFF' ? text[1..] : text;
 
     public static Playlist Parse(string content)
     {
@@ -76,10 +127,15 @@ public static class M3UParser
                 continue;
             }
 
-            if (!seenContent && line.StartsWith(HeaderTag, StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith(HeaderTag, StringComparison.OrdinalIgnoreCase))
             {
+                // Only the first header counts, later ones come from concatenated playlists
+                if (!seenContent)
+                {
+                    playlist.HeaderAttributes = ParseAttributes(line, HeaderTag.Length, out _);
+                }
+
                 seenContent = true;
-                playlist.HeaderAttributes = ParseAttributes(line, HeaderTag.Length, out _);
                 continue;
             }
 
@@ -89,7 +145,10 @@ public static class M3UParser
             {
                 if (pendingExtInf != null)
                 {
+                    // The previous entry had no URL, don't let its group and options leak into this one
                     Console.Error.WriteLine($"Entry without URL before line {i + 1}: {pendingExtInf}");
+                    pendingGroup = null;
+                    pendingExtraLines = [];
                 }
 
                 pendingExtInf = line;
@@ -100,8 +159,9 @@ public static class M3UParser
             }
             else if (line.StartsWith('#'))
             {
-                // #EXTVLCOPT, #KODIPROP, ... belong to the entry. Plain comments are dropped.
-                if (line.StartsWith("#EXT", StringComparison.OrdinalIgnoreCase) || line.StartsWith("#KODIPROP", StringComparison.OrdinalIgnoreCase))
+                // #EXTVLCOPT, #KODIPROP, ... belong to the entry. Plain comments and HLS tags (#EXT-X-...) are dropped.
+                bool isEntryDirective = line.StartsWith("#EXT", StringComparison.OrdinalIgnoreCase) && !line.StartsWith("#EXT-X-", StringComparison.OrdinalIgnoreCase);
+                if (isEntryDirective || line.StartsWith("#KODIPROP", StringComparison.OrdinalIgnoreCase))
                 {
                     pendingExtraLines.Add(line);
                 }
@@ -142,16 +202,15 @@ public static class M3UParser
             }
         }
 
-        var groupAttribute = attributes.FindIndex(a => string.Equals(a.Key, Channel.GroupTitleAttribute, StringComparison.OrdinalIgnoreCase));
-        if (groupAttribute >= 0)
+        // group-title is written from the category, so remove every copy of it (some lines have it twice)
+        static bool IsGroupTitle(KeyValuePair<string, string> a) => string.Equals(a.Key, Channel.GroupTitleAttribute, StringComparison.OrdinalIgnoreCase);
+        var groupTitle = attributes.Where(IsGroupTitle).Select(a => a.Value.Trim()).FirstOrDefault(v => v.Length > 0);
+        if (groupTitle != null)
         {
-            if (!string.IsNullOrWhiteSpace(attributes[groupAttribute].Value))
-            {
-                group = attributes[groupAttribute].Value.Trim();
-            }
-
-            attributes.RemoveAt(groupAttribute);
+            group = groupTitle;
         }
+
+        attributes.RemoveAll(IsGroupTitle);
 
         if (string.IsNullOrWhiteSpace(group))
         {

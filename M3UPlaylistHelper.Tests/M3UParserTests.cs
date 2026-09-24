@@ -110,4 +110,61 @@ public class M3UParserTests
         Assert.Equal([new("tvg-chno", "5"), new("catchup", "default")], attributes);
         Assert.Equal("Five", name);
     }
+
+    [Fact]
+    public void IgnoresRepeatedHeadersAndHlsTags()
+    {
+        var playlist = M3UParser.Parse("""
+            #EXTM3U url-tvg="http://epg/a.xml"
+            #EXTINF:-1 group-title="A",One
+            http://example.com/1
+            #EXTM3U url-tvg="http://epg/b.xml"
+            #EXT-X-VERSION:3
+            #EXTINF:-1 group-title="A",Two
+            http://example.com/2
+            """);
+
+        Assert.Equal("http://epg/a.xml", Assert.Single(playlist.HeaderAttributes).Value);
+        Assert.All(playlist.AllChannels, c => Assert.Empty(c.ExtraLines));
+    }
+
+    [Fact]
+    public void RemovesEveryGroupTitleAttribute()
+    {
+        var playlist = M3UParser.Parse("""
+            #EXTINF:-1 group-title="" tvg-id="x" group-title="Movies",Film
+            http://example.com/film
+            """);
+
+        var channel = Assert.Single(playlist.AllChannels);
+        Assert.Equal("Movies", channel.Category.Title);
+        Assert.Equal([new("tvg-id", "x")], channel.Attributes);
+    }
+
+    [Fact]
+    public void EntryWithoutUrlDoesNotLeakIntoNextEntry()
+    {
+        var playlist = M3UParser.Parse("""
+            #EXTINF:-1,Broken
+            #EXTGRP:Wrong
+            #EXTVLCOPT:wrong=1
+            #EXTINF:-1,Good
+            http://example.com/good
+            """);
+
+        var channel = Assert.Single(playlist.AllChannels);
+        Assert.Equal("Good", channel.Name);
+        Assert.Equal(M3UParser.DefaultCategory, channel.Category.Title);
+        Assert.Empty(channel.ExtraLines);
+    }
+
+    [Fact]
+    public void DecodesUtf8AndFallsBackToWindows1252()
+    {
+        var text = "#EXTINF:-1,Télé Café\nhttp://example.com/t\n";
+
+        Assert.Equal(text, M3UParser.Decode([0xEF, 0xBB, 0xBF, .. System.Text.Encoding.UTF8.GetBytes(text)], null));
+        Assert.Equal(text, M3UParser.Decode(System.Text.Encoding.Latin1.GetBytes(text), null));
+        Assert.Equal(text, M3UParser.Decode(System.Text.Encoding.Latin1.GetBytes(text), "iso-8859-1"));
+    }
 }

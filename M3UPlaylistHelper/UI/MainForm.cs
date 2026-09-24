@@ -31,6 +31,8 @@ public partial class MainForm : Form
     private bool isLoading;
     private bool suppressCategorySelectionChanged;
     private CancellationTokenSource? logoCancellation;
+    private string? nameBeforeEdit;
+    private bool suppressSpaceKeyUp;
 
     public MainForm(string? startupItem = null)
     {
@@ -142,7 +144,7 @@ public partial class MainForm : Form
         try
         {
             var loaded = isUrl
-                ? await M3UParser.ParseUrlAsync(source, CancellationToken.None)
+                ? await Task.Run(() => M3UParser.ParseUrlAsync(source, CancellationToken.None))
                 : await Task.Run(() => M3UParser.ParseFileAsync(source, CancellationToken.None));
 
             playlist = loaded;
@@ -157,6 +159,7 @@ public partial class MainForm : Form
 
             textBoxCategoryFilter.Clear();
             textBoxChannelFilter.Clear();
+            filterTimer.Stop();
             checkBoxSearchAllCategories.Checked = false;
         }
         catch (Exception ex)
@@ -272,8 +275,13 @@ public partial class MainForm : Form
 
     private void CommitGridEdits()
     {
-        dataGridViewCategories.EndEdit();
-        dataGridViewChannels.EndEdit();
+        foreach (var grid in new[] { dataGridViewCategories, dataGridViewChannels })
+        {
+            if (!grid.EndEdit())
+            {
+                grid.CancelEdit();
+            }
+        }
     }
 
     private void MarkDirty()
@@ -605,30 +613,38 @@ public partial class MainForm : Form
         dataGridViewChannels.InvalidateColumn(columnChannelCategory.Index);
     }
 
-    private void DataGridView_CellValidating(object? sender, DataGridViewCellValidatingEventArgs e)
+    private void DataGridView_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
     {
-        if (sender is not DataGridView grid || !grid.IsCurrentCellInEditMode)
+        if (sender is DataGridView grid && e.RowIndex >= 0)
         {
-            return;
-        }
-
-        bool isNameColumn = e.ColumnIndex == columnCategoryTitle.Index && grid == dataGridViewCategories
-            || e.ColumnIndex == columnChannelName.Index && grid == dataGridViewChannels;
-
-        if (isNameColumn && string.IsNullOrWhiteSpace(e.FormattedValue?.ToString()))
-        {
-            // Stay in edit mode until a name is typed, Esc restores the old name
-            grid.Rows[e.RowIndex].ErrorText = "The name cannot be empty. Press Esc to undo.";
-            e.Cancel = true;
+            nameBeforeEdit = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
         }
     }
 
     private void DataGridView_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
     {
-        if (sender is DataGridView grid && e.RowIndex >= 0)
+        if (sender is not DataGridView grid || e.RowIndex < 0 || nameBeforeEdit == null)
         {
-            grid.Rows[e.RowIndex].ErrorText = string.Empty;
+            return;
         }
+
+        // Empty names are not allowed, put the old one back instead of trapping the user in edit mode
+        switch (grid.Rows[e.RowIndex].DataBoundItem)
+        {
+            case Category category when e.ColumnIndex == columnCategoryTitle.Index && string.IsNullOrWhiteSpace(category.Title):
+                category.Title = nameBeforeEdit;
+                toolStripStatusLabel.Text = "A category name cannot be empty, the old name was restored.";
+                RefreshChannelListHeader();
+                break;
+
+            case Channel channel when e.ColumnIndex == columnChannelName.Index && string.IsNullOrWhiteSpace(channel.Name):
+                channel.Name = nameBeforeEdit;
+                toolStripStatusLabel.Text = "A channel name cannot be empty, the old name was restored.";
+                break;
+        }
+
+        nameBeforeEdit = null;
+        grid.InvalidateRow(e.RowIndex);
     }
 
     private void DataGridViewCategories_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -641,18 +657,23 @@ public partial class MainForm : Form
 
     private void DataGridView_KeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is not DataGridView grid || grid.IsCurrentCellInEditMode || e.KeyCode != Keys.Space || e.Modifiers != Keys.None)
+        // Check box cells are always "in edit mode" when current, so look for a text editing control instead
+        if (sender is not DataGridView grid || grid.EditingControl != null || e.KeyCode != Keys.Space || e.Modifiers != Keys.None)
         {
             return;
         }
 
         var checkBoxColumn = grid == dataGridViewCategories ? columnCategoryIncluded.Index : columnChannelIncluded.Index;
+        bool currentIsCheckBox = grid.CurrentCell?.ColumnIndex == checkBoxColumn;
 
         // A single check box cell already toggles itself with space
-        if (grid.SelectedRows.Count <= 1 && grid.CurrentCell?.ColumnIndex == checkBoxColumn)
+        if (grid.SelectedRows.Count <= 1 && currentIsCheckBox)
         {
             return;
         }
+
+        // The check box cell toggles itself on key up, which would undo our toggle for the current row
+        suppressSpaceKeyUp = currentIsCheckBox;
 
         var rows = grid.SelectedRows.Cast<DataGridViewRow>().ToList();
         if (rows.Count == 0 && grid.CurrentRow != null)
@@ -671,6 +692,15 @@ public partial class MainForm : Form
         e.Handled = true;
         e.SuppressKeyPress = true;
         OnIncludedStateChanged();
+    }
+
+    private void DataGridView_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (suppressSpaceKeyUp && e.KeyCode == Keys.Space)
+        {
+            suppressSpaceKeyUp = false;
+            e.Handled = true;
+        }
     }
 
     private static bool IsIncluded(object? item) => item switch
@@ -703,6 +733,7 @@ public partial class MainForm : Form
         var row = grid.Rows[e.RowIndex];
         if (!row.Selected)
         {
+            CommitGridEdits();
             grid.ClearSelection();
             grid.CurrentCell = row.Cells[Math.Max(e.ColumnIndex, 0)];
             row.Selected = true;
@@ -873,7 +904,7 @@ public partial class MainForm : Form
     {
         if (CurrentChannel is Channel channel)
         {
-            Clipboard.SetText(channel.Url);
+            SetClipboardText(channel.Url);
         }
     }
 
@@ -881,7 +912,20 @@ public partial class MainForm : Form
     {
         if (CurrentChannel is Channel channel)
         {
-            Clipboard.SetText(channel.Name);
+            SetClipboardText(channel.Name);
+        }
+    }
+
+    private void SetClipboardText(string text)
+    {
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception ex)
+        {
+            // The clipboard can be locked by another application
+            toolStripStatusLabel.Text = $"Could not copy to the clipboard: {ex.Message}";
         }
     }
 
@@ -892,9 +936,11 @@ public partial class MainForm : Form
             return;
         }
 
+        CommitGridEdits();
         selectedCategory = channel.Category;
         textBoxCategoryFilter.Clear();
         textBoxChannelFilter.Clear();
+        filterTimer.Stop();
         checkBoxSearchAllCategories.Checked = false;
         RefreshCategoryList();
         RefreshChannelList();

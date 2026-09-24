@@ -386,11 +386,12 @@ partial class MainForm
         dataGridViewCategories.CellEndEdit += DataGridView_CellEndEdit;
         dataGridViewCategories.CellFormatting += DataGridViewCategories_CellFormatting;
         dataGridViewCategories.CellMouseDown += DataGridView_CellMouseDown;
-        dataGridViewCategories.CellValidating += DataGridView_CellValidating;
+        dataGridViewCategories.CellBeginEdit += DataGridView_CellBeginEdit;
         dataGridViewCategories.CellValueChanged += DataGridViewCategories_CellValueChanged;
         dataGridViewCategories.CurrentCellDirtyStateChanged += DataGridView_CurrentCellDirtyStateChanged;
         dataGridViewCategories.SelectionChanged += DataGridViewCategories_SelectionChanged;
         dataGridViewCategories.KeyDown += DataGridView_KeyDown;
+        dataGridViewCategories.KeyUp += DataGridView_KeyUp;
         //
         // columnCategoryIncluded
         //
@@ -556,11 +557,12 @@ partial class MainForm
         dataGridViewChannels.CellEndEdit += DataGridView_CellEndEdit;
         dataGridViewChannels.CellFormatting += DataGridViewChannels_CellFormatting;
         dataGridViewChannels.CellMouseDown += DataGridView_CellMouseDown;
-        dataGridViewChannels.CellValidating += DataGridView_CellValidating;
+        dataGridViewChannels.CellBeginEdit += DataGridView_CellBeginEdit;
         dataGridViewChannels.CellValueChanged += DataGridViewChannels_CellValueChanged;
         dataGridViewChannels.CurrentCellDirtyStateChanged += DataGridView_CurrentCellDirtyStateChanged;
         dataGridViewChannels.Scroll += DataGridViewChannels_Scroll;
         dataGridViewChannels.KeyDown += DataGridView_KeyDown;
+        dataGridViewChannels.KeyUp += DataGridView_KeyUp;
         dataGridViewChannels.Resize += DataGridViewChannels_Resize;
         //
         // columnChannelIncluded
