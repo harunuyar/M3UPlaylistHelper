@@ -533,6 +533,7 @@ partial class MainForm
         dataGridViewCategories.AllowUserToResizeRows = false;
         dataGridViewCategories.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         dataGridViewCategories.BackgroundColor = SystemColors.Window;
+        dataGridViewCategories.ClipboardCopyMode = DataGridViewClipboardCopyMode.Disable;
         dataGridViewCategories.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         dataGridViewCategories.Columns.AddRange(new DataGridViewColumn[] { columnCategoryIncluded, columnCategoryTitle, columnCategoryCount });
         dataGridViewCategories.ContextMenuStrip = contextMenuCategories;
@@ -708,6 +709,7 @@ partial class MainForm
         dataGridViewChannels.AllowUserToResizeRows = false;
         dataGridViewChannels.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         dataGridViewChannels.BackgroundColor = SystemColors.Window;
+        dataGridViewChannels.ClipboardCopyMode = DataGridViewClipboardCopyMode.Disable;
         dataGridViewChannels.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         dataGridViewChannels.Columns.AddRange(new DataGridViewColumn[] { columnChannelIncluded, columnChannelLogo, columnChannelName, columnChannelEpg, columnChannelCategory, columnChannelUrl });
         dataGridViewChannels.ContextMenuStrip = contextMenuChannels;

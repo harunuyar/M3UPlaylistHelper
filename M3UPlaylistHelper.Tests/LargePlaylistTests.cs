@@ -47,10 +47,7 @@ public class LargePlaylistTests(ITestOutputHelper output)
         Assert.Equal(CategoryCount, playlist.Categories.Count);
         Assert.Equal(ChannelCount, playlist.AllChannels.Count());
 
-        var matches = Measure("Search all channels", () => playlist.AllChannels.Where(c =>
-            PlaylistTools.Matches(c.Name, "channel 12345 hd") ||
-            PlaylistTools.Matches(c.TvgName, "channel 12345 hd") ||
-            PlaylistTools.Matches(c.TvgId, "channel 12345 hd")).ToList(), 3_000);
+        var matches = Measure("Search all channels", () => playlist.AllChannels.Where(c => PlaylistTools.Matches(c, "channel 12345 hd")).ToList(), 3_000);
         Assert.Single(matches);
 
         Measure("Count exported", () => playlist.ExportedChannels.Count(), 1_000);

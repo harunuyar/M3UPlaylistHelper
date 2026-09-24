@@ -25,7 +25,12 @@ public class DragDataGridView : DataGridView
 
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public int SelectedRowCount => Rows.GetRowCount(DataGridViewElementStates.Selected);
+    public int SelectedRowCount => Rows.GetRowCount(DataGridViewElementStates.Visible | DataGridViewElementStates.Selected);
+
+    /// <summary>
+    /// Adds a row to the selection without unsharing it.
+    /// </summary>
+    public void SelectRow(int rowIndex) => SetSelectedRowCore(rowIndex, true);
 
     /// <summary>
     /// Indexes of the selected rows, in display order.

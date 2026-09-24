@@ -1,6 +1,7 @@
 namespace M3UPlaylistHelper.Tools;
 
 using M3UPlaylistHelper.Model;
+using System.Globalization;
 
 public static class PlaylistTools
 {
@@ -208,6 +209,24 @@ public static class PlaylistTools
         return count;
     }
 
+    /// <summary>
+    /// Search match that ignores case and accents, so "cafe" finds "Café" and "istanbul" finds "İSTANBUL".
+    /// </summary>
     public static bool Matches(string? text, string filter) =>
-        text != null && text.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
+        text != null && CultureInfo.InvariantCulture.CompareInfo.IndexOf(text, filter, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+
+    /// <summary>
+    /// Whether a channel's name, tvg-name or tvg-id matches the search.
+    /// </summary>
+    public static bool Matches(Channel channel, string filter)
+    {
+        if (Matches(channel.Name, filter))
+        {
+            return true;
+        }
+
+        // tvg-name is usually the same as the name, don't search it twice
+        var tvgName = channel.TvgName;
+        return (tvgName != channel.Name && Matches(tvgName, filter)) || Matches(channel.TvgId, filter);
+    }
 }

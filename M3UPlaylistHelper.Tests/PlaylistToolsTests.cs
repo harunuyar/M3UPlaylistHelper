@@ -85,4 +85,14 @@ public class PlaylistToolsTests
             File.Delete(file);
         }
     }
+
+    [Theory]
+    [InlineData("Café Channel", "cafe")]
+    [InlineData("İSTANBUL TV", "istanbul")]
+    [InlineData("ISTANBUL TV", "istanbul")]
+    [InlineData("BBC One", "bbc o")]
+    public void SearchIgnoresCaseAndAccents(string text, string filter)
+    {
+        Assert.True(PlaylistTools.Matches(text, filter));
+    }
 }

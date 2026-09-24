@@ -24,7 +24,7 @@ Grab the latest build from the [Releases](../../releases) page:
 - Include/exclude whole categories or single channels; Select All / Clear All / Invert act on the filtered rows; Space toggles every selected row; excluded rows are greyed out
 - Search categories, search channels in the current category, or tick **All categories** to search the whole playlist
 - Rename categories and channels in place (double-click or F2)
-- **Drag and drop** channels to reorder them, drop them on a category to move them there, and drag categories to reorder them. Right-click > Move to Category also offers a new category
+- **Drag and drop** channels to reorder them, drop them on a category to move them there, and drag categories to reorder them. Right-click > Move to Category opens a searchable list, where you can also create a new category
 - Exclude duplicate channels (same stream URL)
 - **Selection profiles**: save your choices once and reapply them when your provider updates the playlist
 - Right-click a channel to play it in your default media player or copy its URL or name
@@ -49,6 +49,7 @@ Grab the latest build from the [Releases](../../releases) page:
 | Ctrl+S / Ctrl+Shift+S | Save / Save As |
 | Ctrl+F | Search channels |
 | Space | Toggle selected rows |
+| Ctrl+C | Copy the selected channels (as M3U lines) or category names |
 | F2 | Rename |
 | Alt+Up / Alt+Down | Move category |
 | Esc (in a search box) | Clear the search |

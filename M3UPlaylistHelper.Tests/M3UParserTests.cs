@@ -167,4 +167,12 @@ public class M3UParserTests
         Assert.Equal(text, M3UParser.Decode(System.Text.Encoding.Latin1.GetBytes(text), null));
         Assert.Equal(text, M3UParser.Decode(System.Text.Encoding.Latin1.GetBytes(text), "iso-8859-1"));
     }
+
+    [Fact]
+    public void OnlyCarriageReturnAndLineFeedEndLines()
+    {
+        var playlist = M3UParser.Parse("#EXTINF:-1,Name\u0085With\u2028Separators\r\nhttp://example.com/a\rhttp://example.com/b\n");
+
+        Assert.Equal(["Name\u0085With\u2028Separators", "http://example.com/b"], playlist.AllChannels.Select(c => c.Name));
+    }
 }

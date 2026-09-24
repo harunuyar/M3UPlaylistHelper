@@ -52,9 +52,13 @@ public partial class CategoryPickerDialog : Form
         listBoxCategories.Items.Clear();
         listBoxCategories.Items.AddRange(matches.Select(c => (object)new Item(c)).ToArray());
 
-        if (ExactMatch is Category exact)
+        // Preselect the exact match, else the first match, so Enter moves to what the user is looking at.
+        // Creating a new category is a separate, explicit button.
+        if (listBoxCategories.Items.Count > 0)
         {
-            listBoxCategories.SelectedIndex = matches.ToList().IndexOf(exact);
+            var exact = ExactMatch;
+            int index = exact == null ? 0 : Math.Max(0, matches.ToList().IndexOf(exact));
+            listBoxCategories.SelectedIndex = search.Length > 0 ? index : -1;
         }
 
         listBoxCategories.EndUpdate();
@@ -63,20 +67,36 @@ public partial class CategoryPickerDialog : Form
 
     private void UpdateHint()
     {
+        bool canCreate = SearchText.Length > 0 && ExactMatch == null;
+        buttonCreate.Enabled = canCreate;
+        buttonCreate.Text = canCreate ? $"New \"{Shorten(SearchText)}\"" : "New Category";
+
         if (listBoxCategories.SelectedItem is Item item)
         {
             labelHint.Text = $"Move to \"{item.Category.Title}\"";
             buttonOk.Enabled = true;
         }
-        else if (SearchText.Length > 0)
+        else if (canCreate)
         {
-            labelHint.Text = $"Create a new category \"{SearchText}\", or pick one from the list";
+            labelHint.Text = $"No category matches, press Enter to create \"{SearchText}\"";
             buttonOk.Enabled = true;
         }
         else
         {
-            labelHint.Text = "Type to search, or type a new name to create a category";
+            labelHint.Text = "Type to search, or type a new name and click New to create a category";
             buttonOk.Enabled = false;
+        }
+    }
+
+    private static string Shorten(string text) => text.Length <= 20 ? text : text[..19] + "\u2026";
+
+    private void ButtonCreate_Click(object sender, EventArgs e)
+    {
+        if (SearchText.Length > 0 && ExactMatch == null)
+        {
+            NewCategoryName = SearchText;
+            DialogResult = DialogResult.OK;
+            Close();
         }
     }
 

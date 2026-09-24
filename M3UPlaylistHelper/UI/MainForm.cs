@@ -41,6 +41,8 @@ public partial class MainForm : Form
     private List<Category> visibleCategories = [];
     private List<Channel> visibleChannels = [];
     private bool suppressSpaceKeyUp;
+    private bool categoryFilterChanged;
+    private bool channelFilterChanged;
 
     // The Xtream account the current playlist came from, for its EPG and account status
     private XtreamAccount? xtreamAccount;
@@ -263,6 +265,7 @@ public partial class MainForm : Form
                 textBoxCategoryFilter.Clear();
                 textBoxChannelFilter.Clear();
                 filterTimer.Stop();
+                categoryFilterChanged = channelFilterChanged = false;
                 checkBoxSearchAllCategories.Checked = false;
             }
 
@@ -463,12 +466,27 @@ public partial class MainForm : Form
 
     private void CommitGridEdits()
     {
-        foreach (var grid in new[] { dataGridViewCategories, dataGridViewChannels })
+        CommitGridEdit(dataGridViewCategories);
+        CommitGridEdit(dataGridViewChannels);
+    }
+
+    private static void CommitGridEdit(DataGridView grid)
+    {
+        if (!grid.IsCurrentCellInEditMode)
         {
-            if (!grid.EndEdit())
-            {
-                grid.CancelEdit();
-            }
+            return;
+        }
+
+        if (!grid.EndEdit())
+        {
+            grid.CancelEdit();
+        }
+
+        // Check box cells are normally always in edit mode while current; clicking them only works that way
+        var column = grid.CurrentCellAddress.X;
+        if (grid.ContainsFocus && column >= 0 && grid.Columns[column] is DataGridViewCheckBoxColumn)
+        {
+            grid.BeginEdit(false);
         }
     }
 
@@ -487,8 +505,11 @@ public partial class MainForm : Form
 
     private void RefreshAll()
     {
-        RefreshCategoryList();
-        RefreshChannelList();
+        if (!RefreshCategoryList())
+        {
+            RefreshChannelList();
+        }
+
         UpdateTitle();
         UpdateStatus();
         UpdateMenuState();
@@ -599,8 +620,12 @@ public partial class MainForm : Form
         ThemeManager.ApplyToolStrip(menuStrip);
     }
 
-    private void RefreshCategoryList()
+    /// <returns>true if the selected category changed and the channel list was refreshed too.</returns>
+    private bool RefreshCategoryList()
     {
+        // A pending edit must be written to the item it was made on, before the rows change meaning
+        CommitGridEdit(dataGridViewCategories);
+
         var filter = textBoxCategoryFilter.Text.Trim();
         var visible = filter.Length == 0
             ? playlist.Categories.ToList()
@@ -623,7 +648,10 @@ public partial class MainForm : Form
             {
                 selectedCategory = target;
                 RefreshChannelList();
+                return true;
             }
+
+            return false;
         }
         finally
         {
@@ -633,6 +661,8 @@ public partial class MainForm : Form
 
     private void RefreshChannelList()
     {
+        CommitGridEdit(dataGridViewChannels);
+
         var filter = textBoxChannelFilter.Text.Trim();
         bool searchAll = checkBoxSearchAllCategories.Checked;
 
@@ -641,10 +671,7 @@ public partial class MainForm : Form
 
         if (filter.Length > 0)
         {
-            source = source.Where(c =>
-                PlaylistTools.Matches(c.Name, filter) ||
-                PlaylistTools.Matches(c.TvgName, filter) ||
-                PlaylistTools.Matches(c.TvgId, filter));
+            source = source.Where(c => PlaylistTools.Matches(c, filter));
         }
 
         var visible = source.ToList();
@@ -666,11 +693,12 @@ public partial class MainForm : Form
 
     private List<Channel> VisibleChannels => visibleChannels;
 
+    // CurrentCellAddress instead of CurrentCell/CurrentRow: those create a row object for every row the user visits
     private Category? CurrentCategory =>
-        dataGridViewCategories.CurrentCell?.RowIndex is int row && row >= 0 && row < visibleCategories.Count ? visibleCategories[row] : null;
+        dataGridViewCategories.CurrentCellAddress.Y is int row && row >= 0 && row < visibleCategories.Count ? visibleCategories[row] : null;
 
     private Channel? CurrentChannel =>
-        dataGridViewChannels.CurrentCell?.RowIndex is int row && row >= 0 && row < visibleChannels.Count ? visibleChannels[row] : null;
+        dataGridViewChannels.CurrentCellAddress.Y is int row && row >= 0 && row < visibleChannels.Count ? visibleChannels[row] : null;
 
     /// <summary>
     /// The selected channels, in the order they are shown.
@@ -951,29 +979,33 @@ public partial class MainForm : Form
 
     private void DataGridView_KeyDown(object? sender, KeyEventArgs e)
     {
-        // Check box cells are always "in edit mode" when current, so look for a text editing control instead
-        if (sender is not DataGridView grid || grid.EditingControl != null || e.KeyCode != Keys.Space || e.Modifiers != Keys.None)
+        if (sender is not DragDataGridView grid || grid.EditingControl != null)
         {
             return;
         }
 
-        var dragGrid = (DragDataGridView)grid;
+        if (e.KeyData == (Keys.Control | Keys.C))
+        {
+            CopySelectedRows(grid);
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            return;
+        }
+
+        if (e.KeyData != Keys.Space)
+        {
+            return;
+        }
+
+        // Space is always handled here (not by the check box cell, which only reacts while in edit mode and
+        // only toggles one row). The check box cell would still toggle itself on key up, so that is swallowed.
         var checkBoxColumn = grid == dataGridViewCategories ? columnCategoryIncluded.Index : columnChannelIncluded.Index;
-        bool currentIsCheckBox = grid.CurrentCell?.ColumnIndex == checkBoxColumn;
+        suppressSpaceKeyUp = grid.CurrentCellAddress.X == checkBoxColumn;
 
-        // A single check box cell already toggles itself with space
-        if (currentIsCheckBox && dragGrid.SelectedRowCount <= 1)
+        var rows = grid.GetSelectedRowIndexes();
+        if (rows.Count == 0 && grid.CurrentCellAddress.Y >= 0)
         {
-            return;
-        }
-
-        // The check box cell toggles itself on key up, which would undo our toggle for the current row
-        suppressSpaceKeyUp = currentIsCheckBox;
-
-        var rows = dragGrid.GetSelectedRowIndexes();
-        if (rows.Count == 0 && grid.CurrentCell != null)
-        {
-            rows.Add(grid.CurrentCell.RowIndex);
+            rows.Add(grid.CurrentCellAddress.Y);
         }
 
         var items = rows.Select(GetRowItem(grid)).ToList();
@@ -986,7 +1018,44 @@ public partial class MainForm : Form
 
         e.Handled = true;
         e.SuppressKeyPress = true;
+
+        // A check box cell in edit mode draws its cached value, make it read the new one
+        if (grid.IsCurrentCellInEditMode)
+        {
+            grid.RefreshEdit();
+        }
+
         OnIncludedStateChanged();
+    }
+
+    /// <summary>
+    /// Ctrl+C copies category titles, or channel names and URLs as an M3U snippet. The grid's own copy is disabled:
+    /// it builds text, CSV and HTML for every selected cell, which freezes with hundreds of thousands of rows.
+    /// </summary>
+    private void CopySelectedRows(DragDataGridView grid)
+    {
+        var rows = grid.GetSelectedRowIndexes();
+        var text = new System.Text.StringBuilder();
+
+        foreach (var row in rows)
+        {
+            switch (GetRowItem(grid)(row))
+            {
+                case Category category:
+                    text.AppendLine(category.Title);
+                    break;
+
+                case Channel channel:
+                    text.Append("#EXTINF:-1,").AppendLine(channel.Name).AppendLine(channel.Url);
+                    break;
+            }
+        }
+
+        if (text.Length > 0)
+        {
+            SetClipboardText(text.ToString());
+            toolStripStatusLabel.Text = $"Copied {rows.Count:N0} row(s).";
+        }
     }
 
     private void DataGridView_KeyUp(object? sender, KeyEventArgs e)
@@ -1043,6 +1112,15 @@ public partial class MainForm : Form
 
     private void TextBoxFilter_TextChanged(object? sender, EventArgs e)
     {
+        if (sender == textBoxCategoryFilter)
+        {
+            categoryFilterChanged = true;
+        }
+        else
+        {
+            channelFilterChanged = true;
+        }
+
         filterTimer.Stop();
         filterTimer.Start();
     }
@@ -1050,8 +1128,17 @@ public partial class MainForm : Form
     private void FilterTimer_Tick(object? sender, EventArgs e)
     {
         filterTimer.Stop();
-        RefreshCategoryList();
-        RefreshChannelList();
+
+        // Only redo the filtering that changed, searching all channels of a huge playlist is the expensive part
+        bool channelsRefreshed = categoryFilterChanged && RefreshCategoryList();
+
+        if (channelFilterChanged && !channelsRefreshed)
+        {
+            RefreshChannelList();
+        }
+
+        categoryFilterChanged = false;
+        channelFilterChanged = false;
     }
 
     private void TextBoxFilter_KeyDown(object? sender, KeyEventArgs e)
@@ -1174,13 +1261,10 @@ public partial class MainForm : Form
 
     private void SelectChannels(IReadOnlyCollection<Channel> channels)
     {
-        // Selecting rows creates a row object for each, so don't highlight more than a screenful or so
-        const int maxHighlighted = 2000;
-
         var wanted = channels.ToHashSet();
         var rows = new List<int>();
 
-        for (int i = 0; i < visibleChannels.Count && rows.Count < maxHighlighted; i++)
+        for (int i = 0; i < visibleChannels.Count; i++)
         {
             if (wanted.Contains(visibleChannels[i]))
             {
@@ -1197,7 +1281,7 @@ public partial class MainForm : Form
 
         foreach (var row in rows.Skip(1))
         {
-            dataGridViewChannels.Rows[row].Selected = true;
+            dataGridViewChannels.SelectRow(row);
         }
     }
 
@@ -1217,6 +1301,13 @@ public partial class MainForm : Form
         }
 
         var target = dialog.SelectedCategory ?? PlaylistTools.FindCategory(playlist, dialog.NewCategoryName!) ?? new Category(dialog.NewCategoryName!);
+
+        if (channels.All(c => c.Category == target))
+        {
+            toolStripStatusLabel.Text = $"The channels are already in \"{target.Title}\".";
+            return;
+        }
+
         MoveChannelsTo(channels, target, null);
     }
 
@@ -1339,6 +1430,7 @@ public partial class MainForm : Form
         textBoxCategoryFilter.Clear();
         textBoxChannelFilter.Clear();
         filterTimer.Stop();
+        categoryFilterChanged = channelFilterChanged = false;
         checkBoxSearchAllCategories.Checked = false;
         RefreshCategoryList();
         RefreshChannelList();

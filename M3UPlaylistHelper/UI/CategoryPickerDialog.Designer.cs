@@ -31,6 +31,7 @@ partial class CategoryPickerDialog
         textBoxSearch = new TextBox();
         listBoxCategories = new ListBox();
         labelHint = new Label();
+        buttonCreate = new Button();
         buttonOk = new Button();
         buttonCancel = new Button();
         SuspendLayout();
@@ -68,6 +69,17 @@ partial class CategoryPickerDialog
         labelHint.Size = new Size(536, 25);
         labelHint.TabIndex = 2;
         //
+        // buttonCreate
+        //
+        buttonCreate.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+        buttonCreate.Location = new Point(12, 496);
+        buttonCreate.Name = "buttonCreate";
+        buttonCreate.Size = new Size(260, 34);
+        buttonCreate.TabIndex = 5;
+        buttonCreate.Text = "New Category";
+        buttonCreate.UseVisualStyleBackColor = true;
+        buttonCreate.Click += ButtonCreate_Click;
+        //
         // buttonOk
         //
         buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
@@ -99,6 +111,7 @@ partial class CategoryPickerDialog
         ClientSize = new Size(560, 542);
         Controls.Add(buttonCancel);
         Controls.Add(buttonOk);
+        Controls.Add(buttonCreate);
         Controls.Add(labelHint);
         Controls.Add(listBoxCategories);
         Controls.Add(textBoxSearch);
@@ -118,6 +131,7 @@ partial class CategoryPickerDialog
     private TextBox textBoxSearch;
     private ListBox listBoxCategories;
     private Label labelHint;
+    private Button buttonCreate;
     private Button buttonOk;
     private Button buttonCancel;
 }

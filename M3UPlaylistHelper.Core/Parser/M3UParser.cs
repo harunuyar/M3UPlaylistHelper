@@ -90,9 +90,25 @@ public static class M3UParser
         bool seenContent = false;
         int lineNumber = 0;
 
-        // Work on spans: playlists can have hundreds of thousands of lines, and only the parts that are kept become strings
-        foreach (var rawLine in content.AsSpan().EnumerateLines())
+        // Work on spans: playlists can have hundreds of thousands of lines, and only the parts that are kept become strings.
+        // Only \r and \n end a line (EnumerateLines would also split on U+0085 etc., which can appear in names).
+        var remaining = content.AsSpan();
+
+        while (!remaining.IsEmpty)
         {
+            int end = remaining.IndexOfAny('\r', '\n');
+            var rawLine = end < 0 ? remaining : remaining[..end];
+
+            if (end < 0)
+            {
+                remaining = default;
+            }
+            else
+            {
+                bool crlf = remaining[end] == '\r' && end + 1 < remaining.Length && remaining[end + 1] == '\n';
+                remaining = remaining[(end + (crlf ? 2 : 1))..];
+            }
+
             lineNumber++;
             var line = rawLine.Trim().TrimStart('\uFEFF');
 
