@@ -1,4 +1,4 @@
-﻿namespace M3UPlaylistHelper.UI;
+namespace M3UPlaylistHelper.UI;
 
 partial class OpenURLDialog
 {
@@ -29,8 +29,9 @@ partial class OpenURLDialog
     private void InitializeComponent()
     {
         labelUrl = new Label();
-        textBoxUrl = new TextBox();
+        comboBoxUrl = new ComboBox();
         buttonOk = new Button();
+        buttonCancel = new Button();
         SuspendLayout();
         // 
         // labelUrl
@@ -42,35 +43,56 @@ partial class OpenURLDialog
         labelUrl.TabIndex = 0;
         labelUrl.Text = "URL:";
         // 
-        // textBoxUrl
+        // comboBoxUrl
         // 
-        textBoxUrl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        textBoxUrl.Location = new Point(12, 37);
-        textBoxUrl.Name = "textBoxUrl";
-        textBoxUrl.Size = new Size(586, 31);
-        textBoxUrl.TabIndex = 1;
+        comboBoxUrl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        comboBoxUrl.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        comboBoxUrl.AutoCompleteSource = AutoCompleteSource.ListItems;
+        comboBoxUrl.FormattingEnabled = true;
+        comboBoxUrl.Location = new Point(12, 37);
+        comboBoxUrl.Name = "comboBoxUrl";
+        comboBoxUrl.Size = new Size(786, 33);
+        comboBoxUrl.TabIndex = 1;
         // 
         // buttonOk
         // 
         buttonOk.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        buttonOk.DialogResult = DialogResult.OK;
-        buttonOk.Location = new Point(474, 74);
+        buttonOk.Location = new Point(544, 80);
         buttonOk.Name = "buttonOk";
         buttonOk.Size = new Size(124, 34);
         buttonOk.TabIndex = 2;
-        buttonOk.Text = "OK";
+        buttonOk.Text = "Open";
         buttonOk.UseVisualStyleBackColor = true;
-        buttonOk.Click += buttonOk_Click;
+        buttonOk.Click += ButtonOk_Click;
+        // 
+        // buttonCancel
+        // 
+        buttonCancel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        buttonCancel.DialogResult = DialogResult.Cancel;
+        buttonCancel.Location = new Point(674, 80);
+        buttonCancel.Name = "buttonCancel";
+        buttonCancel.Size = new Size(124, 34);
+        buttonCancel.TabIndex = 3;
+        buttonCancel.Text = "Cancel";
+        buttonCancel.UseVisualStyleBackColor = true;
         // 
         // OpenURLDialog
         // 
+        AcceptButton = buttonOk;
         AutoScaleDimensions = new SizeF(10F, 25F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(610, 118);
+        CancelButton = buttonCancel;
+        ClientSize = new Size(810, 126);
+        Controls.Add(buttonCancel);
         Controls.Add(buttonOk);
-        Controls.Add(textBoxUrl);
+        Controls.Add(comboBoxUrl);
         Controls.Add(labelUrl);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
         Name = "OpenURLDialog";
+        ShowInTaskbar = false;
+        StartPosition = FormStartPosition.CenterParent;
         Text = "Open M3U URL";
         ResumeLayout(false);
         PerformLayout();
@@ -79,6 +101,7 @@ partial class OpenURLDialog
     #endregion
 
     private Label labelUrl;
-    private TextBox textBoxUrl;
+    private ComboBox comboBoxUrl;
     private Button buttonOk;
+    private Button buttonCancel;
 }

@@ -1,0 +1,51 @@
+name: Release
+
+# Push a version tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to publish a GitHub release
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          $common = @('M3UPlaylistHelper/M3UPlaylistHelper.csproj', '--configuration', 'Release', '--runtime', 'win-x64',
+                      '-p:PublishSingleFile=true', '-p:DebugType=none', "-p:Version=$version")
+
+          # Runs anywhere, no .NET installation needed
+          dotnet publish @common --self-contained true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output out/standalone
+
+          # Small download for machines that already have the .NET 8 Desktop Runtime
+          dotnet publish @common --self-contained false --output out/framework
+
+          New-Item -ItemType Directory -Force dist, out/portable | Out-Null
+          Copy-Item out/standalone/M3UPlaylistHelper.exe "dist/M3UPlaylistHelper-$version-win-x64.exe"
+          Copy-Item out/framework/M3UPlaylistHelper.exe "dist/M3UPlaylistHelper-$version-win-x64-requires-dotnet8.exe"
+
+          # Portable: settings are stored next to the exe instead of %AppData%
+          Copy-Item out/standalone/M3UPlaylistHelper.exe out/portable/
+          Set-Content out/portable/portable.txt "Settings are stored in settings.json next to M3UPlaylistHelper.exe. Delete this file to use %AppData% instead."
+          Compress-Archive -Path out/portable/* -DestinationPath "dist/M3UPlaylistHelper-$version-win-x64-portable.zip"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
