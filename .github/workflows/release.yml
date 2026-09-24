@@ -3,7 +3,7 @@ name: Release
 # Push a version tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to publish a GitHub release
 on:
   push:
-    tags: ['v*']
+    tags: ['v[0-9]*']
 
 permissions:
   contents: write
@@ -23,8 +23,10 @@ jobs:
 
       - name: Publish
         shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
+          $version = $env:TAG.TrimStart('v')
           $common = @('M3UPlaylistHelper/M3UPlaylistHelper.csproj', '--configuration', 'Release', '--runtime', 'win-x64',
                       '-p:PublishSingleFile=true', '-p:DebugType=none', "-p:Version=$version")
 

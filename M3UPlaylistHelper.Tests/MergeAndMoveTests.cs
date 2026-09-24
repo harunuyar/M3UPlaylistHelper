@@ -52,6 +52,11 @@ public class MergeAndMoveTests
         Assert.Equal(["A1", "A2", "A3"], news.Channels.Select(c => c.Name));
 
         Assert.False(PlaylistTools.MoveChannels(playlist, [news.Channels[0]], news, news.Channels[0]));
+
+        // Dropping channels where they already are is not a change
+        Assert.False(PlaylistTools.MoveChannels(playlist, [news.Channels[0], news.Channels[1]], news, news.Channels[2]));
+        Assert.False(PlaylistTools.MoveChannels(playlist, [news.Channels[2]], news, null));
+        Assert.Equal(["A1", "A2", "A3"], news.Channels.Select(c => c.Name));
     }
 
     [Fact]
@@ -94,7 +99,11 @@ public class MergeAndMoveTests
         PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[2], playlist.Categories[0]);
         Assert.Equal(["Movies", "News", "Sports"], playlist.Categories.Select(c => c.Title));
 
-        PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[0], null);
+        Assert.True(PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[0], null));
         Assert.Equal(["News", "Sports", "Movies"], playlist.Categories.Select(c => c.Title));
+
+        Assert.False(PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[2], null));
+        Assert.False(PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[0], playlist.Categories[1]));
+        Assert.False(PlaylistTools.MoveCategoryBefore(playlist, playlist.Categories[0], playlist.Categories[0]));
     }
 }

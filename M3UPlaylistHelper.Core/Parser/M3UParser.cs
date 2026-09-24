@@ -80,26 +80,23 @@ public static class M3UParser
 
     public static Playlist Parse(string content)
     {
-        var lines = content.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
-        return Parse(lines);
-    }
-
-    public static Playlist Parse(IReadOnlyList<string> lines)
-    {
         var playlist = new Playlist();
         Dictionary<string, Category> categoryDict = [];
 
         // State of the entry being read. An entry ends with its URL line.
         string? pendingExtInf = null;
         string? pendingGroup = null;
-        List<string> pendingExtraLines = [];
+        List<string>? pendingExtraLines = null;
         bool seenContent = false;
+        int lineNumber = 0;
 
-        for (int i = 0; i < lines.Count; i++)
+        // Work on spans: playlists can have hundreds of thousands of lines, and only the parts that are kept become strings
+        foreach (var rawLine in content.AsSpan().EnumerateLines())
         {
-            var line = lines[i].Trim().TrimStart('﻿');
+            lineNumber++;
+            var line = rawLine.Trim().TrimStart('\uFEFF');
 
-            if (line.Length == 0)
+            if (line.IsEmpty)
             {
                 continue;
             }
@@ -109,7 +106,7 @@ public static class M3UParser
                 // Only the first header counts, later ones come from concatenated playlists
                 if (!seenContent)
                 {
-                    playlist.HeaderAttributes = ParseAttributes(line, HeaderTag.Length, out _);
+                    playlist.HeaderAttributes = ParseAttributes(line.ToString(), HeaderTag.Length, out _);
                 }
 
                 seenContent = true;
@@ -123,34 +120,34 @@ public static class M3UParser
                 if (pendingExtInf != null)
                 {
                     // The previous entry had no URL, don't let its group and options leak into this one
-                    Console.Error.WriteLine($"Entry without URL before line {i + 1}: {pendingExtInf}");
+                    Console.Error.WriteLine($"Entry without URL before line {lineNumber}: {pendingExtInf}");
                     pendingGroup = null;
-                    pendingExtraLines = [];
+                    pendingExtraLines = null;
                 }
 
-                pendingExtInf = line;
+                pendingExtInf = line.ToString();
             }
             else if (line.StartsWith(ExtGrpTag, StringComparison.OrdinalIgnoreCase))
             {
-                pendingGroup = line[ExtGrpTag.Length..].Trim();
+                pendingGroup = line[ExtGrpTag.Length..].Trim().ToString();
             }
-            else if (line.StartsWith('#'))
+            else if (line[0] == '#')
             {
                 // #EXTVLCOPT, #KODIPROP, ... belong to the entry. Plain comments and HLS tags (#EXT-X-...) are dropped.
                 bool isEntryDirective = line.StartsWith("#EXT", StringComparison.OrdinalIgnoreCase) && !line.StartsWith("#EXT-X-", StringComparison.OrdinalIgnoreCase);
                 if (isEntryDirective || line.StartsWith("#KODIPROP", StringComparison.OrdinalIgnoreCase))
                 {
-                    pendingExtraLines.Add(line);
+                    (pendingExtraLines ??= []).Add(line.ToString());
                 }
             }
             else
             {
-                var channel = CreateChannel(pendingExtInf, pendingGroup, line, pendingExtraLines, playlist, categoryDict);
+                var channel = CreateChannel(pendingExtInf, pendingGroup, line.ToString(), pendingExtraLines ?? [], playlist, categoryDict);
                 channel.Category.Channels.Add(channel);
 
                 pendingExtInf = null;
                 pendingGroup = null;
-                pendingExtraLines = [];
+                pendingExtraLines = null;
             }
         }
 
@@ -180,14 +177,26 @@ public static class M3UParser
         }
 
         // group-title is written from the category, so remove every copy of it (some lines have it twice)
-        static bool IsGroupTitle(KeyValuePair<string, string> a) => string.Equals(a.Key, Channel.GroupTitleAttribute, StringComparison.OrdinalIgnoreCase);
-        var groupTitle = attributes.Where(IsGroupTitle).Select(a => a.Value.Trim()).FirstOrDefault(v => v.Length > 0);
+        string? groupTitle = null;
+        for (int i = attributes.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(attributes[i].Key, Channel.GroupTitleAttribute, StringComparison.OrdinalIgnoreCase))
+            {
+                var value = attributes[i].Value.Trim();
+                if (value.Length > 0)
+                {
+                    // Iterating backwards, so the first non-empty one wins
+                    groupTitle = value;
+                }
+
+                attributes.RemoveAt(i);
+            }
+        }
+
         if (groupTitle != null)
         {
             group = groupTitle;
         }
-
-        attributes.RemoveAll(IsGroupTitle);
 
         if (string.IsNullOrWhiteSpace(group))
         {

@@ -16,6 +16,48 @@ public class DragDataGridView : DataGridView
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public Func<object?>? DragDataProvider { get; set; }
 
+    /// <summary>
+    /// Row state checks that don't "unshare" rows. SelectedRows and Rows[i] create a row object per row,
+    /// which gets slow with hundreds of thousands of rows.
+    /// </summary>
+    public bool IsRowSelected(int rowIndex) =>
+        (Rows.GetRowState(rowIndex) & DataGridViewElementStates.Selected) != 0;
+
+    [System.ComponentModel.Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public int SelectedRowCount => Rows.GetRowCount(DataGridViewElementStates.Selected);
+
+    /// <summary>
+    /// Indexes of the selected rows, in display order.
+    /// </summary>
+    public List<int> GetSelectedRowIndexes()
+    {
+        var indexes = new List<int>();
+        int index = Rows.GetFirstRow(DataGridViewElementStates.Selected);
+
+        while (index >= 0)
+        {
+            indexes.Add(index);
+            index = Rows.GetNextRow(index, DataGridViewElementStates.Selected);
+        }
+
+        return indexes;
+    }
+
+    /// <summary>
+    /// Replaces the rows with <paramref name="count"/> empty virtual-mode rows. Values come from CellValueNeeded.
+    /// </summary>
+    public void ResetRows(int count)
+    {
+        if (EditingControl != null && !EndEdit())
+        {
+            CancelEdit();
+        }
+
+        Rows.Clear();
+        RowCount = count;
+    }
+
     protected override void OnMouseDown(MouseEventArgs e)
     {
         dragBox = Rectangle.Empty;
@@ -31,7 +73,7 @@ public class DragDataGridView : DataGridView
                 var size = SystemInformation.DragSize;
                 dragBox = new Rectangle(e.X - size.Width / 2, e.Y - size.Height / 2, size.Width, size.Height);
 
-                if (Rows[hit.RowIndex].Selected && SelectedRows.Count > 1 && ModifierKeys == Keys.None)
+                if (IsRowSelected(hit.RowIndex) && ModifierKeys == Keys.None && SelectedRowCount > 1)
                 {
                     deferredMouseDown = e;
                     Focus();

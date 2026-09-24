@@ -544,12 +544,12 @@ partial class MainForm
         dataGridViewCategories.RowHeadersWidth = 62;
         dataGridViewCategories.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         dataGridViewCategories.Size = new Size(450, 788);
+        dataGridViewCategories.VirtualMode = true;
         dataGridViewCategories.TabIndex = 2;
-        dataGridViewCategories.CellEndEdit += DataGridView_CellEndEdit;
         dataGridViewCategories.CellFormatting += DataGridViewCategories_CellFormatting;
         dataGridViewCategories.CellMouseDown += DataGridView_CellMouseDown;
-        dataGridViewCategories.CellBeginEdit += DataGridView_CellBeginEdit;
-        dataGridViewCategories.CellValueChanged += DataGridViewCategories_CellValueChanged;
+        dataGridViewCategories.CellValueNeeded += DataGridViewCategories_CellValueNeeded;
+        dataGridViewCategories.CellValuePushed += DataGridViewCategories_CellValuePushed;
         dataGridViewCategories.CurrentCellDirtyStateChanged += DataGridView_CurrentCellDirtyStateChanged;
         dataGridViewCategories.SelectionChanged += DataGridViewCategories_SelectionChanged;
         dataGridViewCategories.KeyDown += DataGridView_KeyDown;
@@ -562,16 +562,14 @@ partial class MainForm
         //
         // columnCategoryIncluded
         //
-        columnCategoryIncluded.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-        columnCategoryIncluded.DataPropertyName = "IsIncluded";
         columnCategoryIncluded.HeaderText = "Include";
         columnCategoryIncluded.MinimumWidth = 8;
         columnCategoryIncluded.Name = "columnCategoryIncluded";
+        columnCategoryIncluded.Width = 80;
         //
         // columnCategoryTitle
         //
         columnCategoryTitle.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-        columnCategoryTitle.DataPropertyName = "Title";
         columnCategoryTitle.HeaderText = "Title";
         columnCategoryTitle.MinimumWidth = 8;
         columnCategoryTitle.Name = "columnCategoryTitle";
@@ -579,12 +577,11 @@ partial class MainForm
         //
         // columnCategoryCount
         //
-        columnCategoryCount.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-        columnCategoryCount.DataPropertyName = "ChannelCountText";
         columnCategoryCount.HeaderText = "Channels";
         columnCategoryCount.MinimumWidth = 8;
         columnCategoryCount.Name = "columnCategoryCount";
         columnCategoryCount.ReadOnly = true;
+        columnCategoryCount.Width = 120;
         columnCategoryCount.ToolTipText = "Included / total channels";
         //
         // contextMenuCategories
@@ -721,12 +718,12 @@ partial class MainForm
         dataGridViewChannels.RowHeadersWidth = 62;
         dataGridViewChannels.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         dataGridViewChannels.Size = new Size(1237, 788);
+        dataGridViewChannels.VirtualMode = true;
         dataGridViewChannels.TabIndex = 3;
-        dataGridViewChannels.CellEndEdit += DataGridView_CellEndEdit;
         dataGridViewChannels.CellFormatting += DataGridViewChannels_CellFormatting;
         dataGridViewChannels.CellMouseDown += DataGridView_CellMouseDown;
-        dataGridViewChannels.CellBeginEdit += DataGridView_CellBeginEdit;
-        dataGridViewChannels.CellValueChanged += DataGridViewChannels_CellValueChanged;
+        dataGridViewChannels.CellValueNeeded += DataGridViewChannels_CellValueNeeded;
+        dataGridViewChannels.CellValuePushed += DataGridViewChannels_CellValuePushed;
         dataGridViewChannels.CurrentCellDirtyStateChanged += DataGridView_CurrentCellDirtyStateChanged;
         dataGridViewChannels.Scroll += DataGridViewChannels_Scroll;
         dataGridViewChannels.KeyDown += DataGridView_KeyDown;
@@ -740,7 +737,6 @@ partial class MainForm
         //
         // columnChannelIncluded
         //
-        columnChannelIncluded.DataPropertyName = "IsIncluded";
         columnChannelIncluded.HeaderText = "Include";
         columnChannelIncluded.MinimumWidth = 8;
         columnChannelIncluded.Name = "columnChannelIncluded";
@@ -758,7 +754,6 @@ partial class MainForm
         //
         // columnChannelName
         //
-        columnChannelName.DataPropertyName = "Name";
         columnChannelName.HeaderText = "Name";
         columnChannelName.MinimumWidth = 8;
         columnChannelName.Name = "columnChannelName";
@@ -777,7 +772,6 @@ partial class MainForm
         //
         // columnChannelCategory
         //
-        columnChannelCategory.DataPropertyName = "CategoryTitle";
         columnChannelCategory.HeaderText = "Category";
         columnChannelCategory.MinimumWidth = 8;
         columnChannelCategory.Name = "columnChannelCategory";
@@ -788,7 +782,6 @@ partial class MainForm
         // columnChannelUrl
         //
         columnChannelUrl.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-        columnChannelUrl.DataPropertyName = "Url";
         columnChannelUrl.HeaderText = "URL";
         columnChannelUrl.MinimumWidth = 8;
         columnChannelUrl.Name = "columnChannelUrl";
@@ -833,7 +826,8 @@ partial class MainForm
         //
         moveToCategoryToolStripMenuItem.Name = "moveToCategoryToolStripMenuItem";
         moveToCategoryToolStripMenuItem.Size = new Size(240, 32);
-        moveToCategoryToolStripMenuItem.Text = "Move to Category";
+        moveToCategoryToolStripMenuItem.Text = "Move to Category...";
+        moveToCategoryToolStripMenuItem.Click += MoveToCategoryToolStripMenuItem_Click;
         //
         // goToCategoryToolStripMenuItem
         //

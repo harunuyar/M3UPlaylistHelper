@@ -37,7 +37,9 @@ public partial class MainForm : Form
     private bool isLoading;
     private bool suppressCategorySelectionChanged;
     private CancellationTokenSource? logoCancellation;
-    private string? nameBeforeEdit;
+    // What the grids show; they run in virtual mode and read rows from these lists on demand
+    private List<Category> visibleCategories = [];
+    private List<Channel> visibleChannels = [];
     private bool suppressSpaceKeyUp;
 
     // The Xtream account the current playlist came from, for its EPG and account status
@@ -209,19 +211,22 @@ public partial class MainForm : Form
 
     #region Opening and saving
 
-    private async Task OpenAsync(PlaylistSource source, bool append)
+    /// <returns>true if the playlist was loaded.</returns>
+    private async Task<bool> OpenAsync(PlaylistSource source, bool append)
     {
         if (isLoading)
         {
-            return;
+            return false;
         }
 
         append &= playlist.Categories.Count > 0;
 
         if (!append && !ConfirmDiscardChanges())
         {
-            return;
+            return false;
         }
+
+        bool success = false;
 
         string? resultMessage = null;
         SetLoading(true, source.IsUrl ? $"Downloading {source.DisplayName}..." : $"Reading {source.DisplayName}...");
@@ -261,6 +266,8 @@ public partial class MainForm : Form
                 checkBoxSearchAllCategories.Checked = false;
             }
 
+            success = true;
+
             if (source.Xtream != null)
             {
                 xtreamAccount = source.Xtream;
@@ -294,14 +301,20 @@ public partial class MainForm : Form
                 toolStripStatusLabel.Text = resultMessage;
             }
         }
+
+        return success;
     }
 
     private async Task OpenAllAsync(IReadOnlyList<PlaylistSource> sources, bool append)
     {
         for (int i = 0; i < sources.Count; i++)
         {
-            // The first one replaces the current playlist (unless adding), the rest are merged into it
-            await OpenAsync(sources[i], append || i > 0);
+            // The first one replaces the current playlist (unless adding), the rest are merged into it.
+            // If that first one was cancelled or failed, don't merge the rest into the playlist the user meant to close.
+            if (!await OpenAsync(sources[i], append || i > 0) && i == 0 && !append)
+            {
+                return;
+            }
         }
     }
 
@@ -385,12 +398,18 @@ public partial class MainForm : Form
 
         try
         {
+            // Big playlists take a moment to write
+            Cursor.Current = Cursors.WaitCursor;
             M3UWriter.WriteFile(playlist, path);
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Could not save the playlist:\n\n{ex.Message}", AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
+        }
+        finally
+        {
+            Cursor.Current = Cursors.Default;
         }
 
         currentFilePath = path;
@@ -501,9 +520,31 @@ public partial class MainForm : Form
             return;
         }
 
-        int includedCategories = playlist.Categories.Count(c => c.IsIncluded);
-        int channels = playlist.AllChannels.Count();
-        int exported = playlist.ExportedChannels.Count();
+        // One pass over everything, this runs after every check box click
+        int includedCategories = 0, channels = 0, exported = 0, withGuide = 0;
+
+        foreach (var category in playlist.Categories)
+        {
+            if (category.IsIncluded)
+            {
+                includedCategories++;
+            }
+
+            foreach (var channel in category.Channels)
+            {
+                channels++;
+
+                if (category.IsIncluded && channel.IsIncluded)
+                {
+                    exported++;
+                }
+
+                if (epg != null && epg.HasGuide(channel))
+                {
+                    withGuide++;
+                }
+            }
+        }
 
         var text =
             $"{playlist.Categories.Count:N0} categories ({includedCategories:N0} included)  |  " +
@@ -511,7 +552,7 @@ public partial class MainForm : Form
 
         if (epg != null)
         {
-            text += $"  |  EPG: {playlist.AllChannels.Count(epg.HasGuide):N0} channels have a guide";
+            text += $"  |  EPG: {withGuide:N0} channels have a guide";
         }
 
         toolStripStatusLabel.Text = text;
@@ -569,12 +610,13 @@ public partial class MainForm : Form
 
         try
         {
-            dataGridViewCategories.DataSource = visible;
+            visibleCategories = visible;
+            dataGridViewCategories.ResetRows(visible.Count);
 
             var target = selectedCategory != null && visible.Contains(selectedCategory) ? selectedCategory : visible.FirstOrDefault();
             if (target != null)
             {
-                dataGridViewCategories.CurrentCell = dataGridViewCategories.Rows[visible.IndexOf(target)].Cells[columnCategoryTitle.Index];
+                dataGridViewCategories.CurrentCell = dataGridViewCategories[columnCategoryTitle.Index, visible.IndexOf(target)];
             }
 
             if (target != selectedCategory)
@@ -606,7 +648,9 @@ public partial class MainForm : Form
         }
 
         var visible = source.ToList();
-        dataGridViewChannels.DataSource = visible;
+        visibleChannels = visible;
+        dataGridViewChannels.ResetRows(visible.Count);
+        dataGridViewChannels.Invalidate();
         columnChannelCategory.Visible = searchAll;
         columnChannelEpg.Visible = epg != null;
 
@@ -618,28 +662,21 @@ public partial class MainForm : Form
         LoadVisibleLogos();
     }
 
-    private List<Category> VisibleCategories =>
-        dataGridViewCategories.DataSource as List<Category> ?? [];
+    private List<Category> VisibleCategories => visibleCategories;
 
-    private List<Channel> VisibleChannels =>
-        dataGridViewChannels.DataSource as List<Channel> ?? [];
+    private List<Channel> VisibleChannels => visibleChannels;
 
     private Category? CurrentCategory =>
-        dataGridViewCategories.CurrentRow?.DataBoundItem as Category;
+        dataGridViewCategories.CurrentCell?.RowIndex is int row && row >= 0 && row < visibleCategories.Count ? visibleCategories[row] : null;
 
     private Channel? CurrentChannel =>
-        dataGridViewChannels.CurrentRow?.DataBoundItem as Channel;
+        dataGridViewChannels.CurrentCell?.RowIndex is int row && row >= 0 && row < visibleChannels.Count ? visibleChannels[row] : null;
 
     /// <summary>
     /// The selected channels, in the order they are shown.
     /// </summary>
     private List<Channel> SelectedChannels =>
-        dataGridViewChannels.SelectedRows
-            .Cast<DataGridViewRow>()
-            .OrderBy(row => row.Index)
-            .Select(row => row.DataBoundItem)
-            .OfType<Channel>()
-            .ToList();
+        dataGridViewChannels.GetSelectedRowIndexes().Where(i => i < visibleChannels.Count).Select(i => visibleChannels[i]).ToList();
 
     private void OnIncludedStateChanged()
     {
@@ -709,26 +746,85 @@ public partial class MainForm : Form
         logoTimer.Start();
     }
 
-    private void DataGridViewChannels_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    private void DataGridViewChannels_CellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
     {
-        if (e.RowIndex < 0 || e.RowIndex >= VisibleChannels.Count || e.CellStyle == null)
+        if (e.RowIndex < 0 || e.RowIndex >= visibleChannels.Count)
         {
             return;
         }
 
-        var channel = VisibleChannels[e.RowIndex];
+        var channel = visibleChannels[e.RowIndex];
 
-        if (e.ColumnIndex == columnChannelLogo.Index)
+        if (e.ColumnIndex == columnChannelIncluded.Index)
+        {
+            e.Value = channel.IsIncluded;
+        }
+        else if (e.ColumnIndex == columnChannelLogo.Index)
         {
             e.Value = checkBoxDownloadLogos.Checked ? LogoCache.Get(channel.LogoUrl) : null;
-            e.FormattingApplied = true;
         }
-        else if (e.ColumnIndex == columnChannelEpg.Index && epg != null)
+        else if (e.ColumnIndex == columnChannelName.Index)
         {
-            bool hasGuide = epg.HasGuide(channel);
-            e.Value = hasGuide ? "✓" : "✗";
-            e.CellStyle.ForeColor = hasGuide ? ThemeManager.Current.Good : ThemeManager.Current.Bad;
-            e.FormattingApplied = true;
+            e.Value = channel.Name;
+        }
+        else if (e.ColumnIndex == columnChannelEpg.Index)
+        {
+            e.Value = epg == null ? null : epg.HasGuide(channel) ? "\u2713" : "\u2717";
+        }
+        else if (e.ColumnIndex == columnChannelCategory.Index)
+        {
+            e.Value = channel.Category.Title;
+        }
+        else if (e.ColumnIndex == columnChannelUrl.Index)
+        {
+            e.Value = channel.Url;
+        }
+    }
+
+    private void DataGridViewChannels_CellValuePushed(object? sender, DataGridViewCellValueEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= visibleChannels.Count)
+        {
+            return;
+        }
+
+        var channel = visibleChannels[e.RowIndex];
+
+        if (e.ColumnIndex == columnChannelIncluded.Index)
+        {
+            channel.IsIncluded = IsChecked(e.Value);
+            OnIncludedStateChanged();
+        }
+        else if (e.ColumnIndex == columnChannelName.Index)
+        {
+            var name = (e.Value as string)?.Trim();
+
+            if (string.IsNullOrEmpty(name))
+            {
+                toolStripStatusLabel.Text = "A channel name cannot be empty, the old name was kept.";
+            }
+            else if (name != channel.Name)
+            {
+                channel.Name = name;
+                MarkDirty();
+            }
+        }
+    }
+
+    private static bool IsChecked(object? value) => value is true || value is CheckState.Checked;
+
+    private void DataGridViewChannels_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= visibleChannels.Count || e.CellStyle == null)
+        {
+            return;
+        }
+
+        var channel = visibleChannels[e.RowIndex];
+
+        if (e.ColumnIndex == columnChannelEpg.Index && epg != null)
+        {
+            e.CellStyle.ForeColor = epg.HasGuide(channel) ? ThemeManager.Current.Good : ThemeManager.Current.Bad;
         }
 
         // Grey out channels that will not be saved, either unchecked or in an unchecked category
@@ -781,29 +877,57 @@ public partial class MainForm : Form
         }
     }
 
-    private void DataGridViewCategories_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+    private void DataGridViewCategories_CellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
     {
-        if (e.RowIndex < 0)
+        if (e.RowIndex < 0 || e.RowIndex >= visibleCategories.Count)
         {
             return;
         }
 
-        if (e.ColumnIndex == columnCategoryTitle.Index)
+        var category = visibleCategories[e.RowIndex];
+
+        if (e.ColumnIndex == columnCategoryIncluded.Index)
         {
-            MarkDirty();
-            RefreshChannelListHeader();
+            e.Value = category.IsIncluded;
         }
-        else
+        else if (e.ColumnIndex == columnCategoryTitle.Index)
         {
-            OnIncludedStateChanged();
+            e.Value = category.Title;
+        }
+        else if (e.ColumnIndex == columnCategoryCount.Index)
+        {
+            e.Value = category.ChannelCountText;
         }
     }
 
-    private void DataGridViewChannels_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+    private void DataGridViewCategories_CellValuePushed(object? sender, DataGridViewCellValueEventArgs e)
     {
-        if (e.RowIndex >= 0)
+        if (e.RowIndex < 0 || e.RowIndex >= visibleCategories.Count)
         {
+            return;
+        }
+
+        var category = visibleCategories[e.RowIndex];
+
+        if (e.ColumnIndex == columnCategoryIncluded.Index)
+        {
+            category.IsIncluded = IsChecked(e.Value);
             OnIncludedStateChanged();
+        }
+        else if (e.ColumnIndex == columnCategoryTitle.Index)
+        {
+            var title = (e.Value as string)?.Trim();
+
+            if (string.IsNullOrEmpty(title))
+            {
+                toolStripStatusLabel.Text = "A category name cannot be empty, the old name was kept.";
+            }
+            else if (title != category.Title)
+            {
+                category.Title = title;
+                MarkDirty();
+                RefreshChannelListHeader();
+            }
         }
     }
 
@@ -815,40 +939,6 @@ public partial class MainForm : Form
         }
 
         dataGridViewChannels.InvalidateColumn(columnChannelCategory.Index);
-    }
-
-    private void DataGridView_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
-    {
-        if (sender is DataGridView grid && e.RowIndex >= 0)
-        {
-            nameBeforeEdit = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
-        }
-    }
-
-    private void DataGridView_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
-    {
-        if (sender is not DataGridView grid || e.RowIndex < 0 || nameBeforeEdit == null)
-        {
-            return;
-        }
-
-        // Empty names are not allowed, put the old one back instead of trapping the user in edit mode
-        switch (grid.Rows[e.RowIndex].DataBoundItem)
-        {
-            case Category category when e.ColumnIndex == columnCategoryTitle.Index && string.IsNullOrWhiteSpace(category.Title):
-                category.Title = nameBeforeEdit;
-                toolStripStatusLabel.Text = "A category name cannot be empty, the old name was restored.";
-                RefreshChannelListHeader();
-                break;
-
-            case Channel channel when e.ColumnIndex == columnChannelName.Index && string.IsNullOrWhiteSpace(channel.Name):
-                channel.Name = nameBeforeEdit;
-                toolStripStatusLabel.Text = "A channel name cannot be empty, the old name was restored.";
-                break;
-        }
-
-        nameBeforeEdit = null;
-        grid.InvalidateRow(e.RowIndex);
     }
 
     private void DataGridViewCategories_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -867,11 +957,12 @@ public partial class MainForm : Form
             return;
         }
 
+        var dragGrid = (DragDataGridView)grid;
         var checkBoxColumn = grid == dataGridViewCategories ? columnCategoryIncluded.Index : columnChannelIncluded.Index;
         bool currentIsCheckBox = grid.CurrentCell?.ColumnIndex == checkBoxColumn;
 
         // A single check box cell already toggles itself with space
-        if (grid.SelectedRows.Count <= 1 && currentIsCheckBox)
+        if (currentIsCheckBox && dragGrid.SelectedRowCount <= 1)
         {
             return;
         }
@@ -879,13 +970,13 @@ public partial class MainForm : Form
         // The check box cell toggles itself on key up, which would undo our toggle for the current row
         suppressSpaceKeyUp = currentIsCheckBox;
 
-        var rows = grid.SelectedRows.Cast<DataGridViewRow>().ToList();
-        if (rows.Count == 0 && grid.CurrentRow != null)
+        var rows = dragGrid.GetSelectedRowIndexes();
+        if (rows.Count == 0 && grid.CurrentCell != null)
         {
-            rows.Add(grid.CurrentRow);
+            rows.Add(grid.CurrentCell.RowIndex);
         }
 
-        var items = rows.Select(r => r.DataBoundItem).ToList();
+        var items = rows.Select(GetRowItem(grid)).ToList();
         bool newValue = !items.All(IsIncluded);
 
         foreach (var item in items)
@@ -906,6 +997,10 @@ public partial class MainForm : Form
             e.Handled = true;
         }
     }
+
+    private Func<int, object?> GetRowItem(DataGridView grid) => grid == dataGridViewCategories
+        ? row => row < visibleCategories.Count ? visibleCategories[row] : null
+        : row => row < visibleChannels.Count ? visibleChannels[row] : null;
 
     private static bool IsIncluded(object? item) => item switch
     {
@@ -934,13 +1029,11 @@ public partial class MainForm : Form
             return;
         }
 
-        var row = grid.Rows[e.RowIndex];
-        if (!row.Selected)
+        if (!((DragDataGridView)grid).IsRowSelected(e.RowIndex))
         {
             CommitGridEdits();
             grid.ClearSelection();
-            grid.CurrentCell = row.Cells[Math.Max(e.ColumnIndex, 0)];
-            row.Selected = true;
+            grid.CurrentCell = grid[Math.Max(e.ColumnIndex, 0), e.RowIndex];
         }
     }
 
@@ -1061,9 +1154,7 @@ public partial class MainForm : Form
         SelectChannels(channels);
         UpdateStatus();
 
-        toolStripStatusLabel.Text = channels[0].Category == selectedCategory || checkBoxSearchAllCategories.Checked
-            ? $"Moved {channels.Count:N0} channel(s)."
-            : $"Moved {channels.Count:N0} channel(s) to \"{target.Title}\".";
+        toolStripStatusLabel.Text = $"Moved {channels.Count:N0} channel(s) to \"{target.Title}\".";
     }
 
     private static void RestoreScrollPosition(DataGridView grid, int firstRow)
@@ -1081,63 +1172,52 @@ public partial class MainForm : Form
         }
     }
 
-    private void SelectChannels(IEnumerable<Channel> channels)
+    private void SelectChannels(IReadOnlyCollection<Channel> channels)
     {
-        var visible = VisibleChannels;
-        var rows = channels.Select(channel => visible.IndexOf(channel)).Where(i => i >= 0).ToList();
+        // Selecting rows creates a row object for each, so don't highlight more than a screenful or so
+        const int maxHighlighted = 2000;
+
+        var wanted = channels.ToHashSet();
+        var rows = new List<int>();
+
+        for (int i = 0; i < visibleChannels.Count && rows.Count < maxHighlighted; i++)
+        {
+            if (wanted.Contains(visibleChannels[i]))
+            {
+                rows.Add(i);
+            }
+        }
+
         if (rows.Count == 0)
         {
             return;
         }
 
-        dataGridViewChannels.CurrentCell = dataGridViewChannels.Rows[rows[0]].Cells[columnChannelName.Index];
+        dataGridViewChannels.CurrentCell = dataGridViewChannels[columnChannelName.Index, rows[0]];
 
-        foreach (var row in rows)
+        foreach (var row in rows.Skip(1))
         {
             dataGridViewChannels.Rows[row].Selected = true;
         }
     }
 
-    private Category? PromptForNewCategory()
+    private void MoveToCategoryToolStripMenuItem_Click(object? sender, EventArgs e)
     {
-        using var dialog = new TextInputDialog("New Category", "Name of the new category:");
+        var channels = SelectedChannels;
+        if (channels.Count == 0)
+        {
+            return;
+        }
+
+        using var dialog = new CategoryPickerDialog(playlist.Categories, channels.Count);
 
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
-            return null;
+            return;
         }
 
-        return PlaylistTools.FindCategory(playlist, dialog.Value) ?? new Category(dialog.Value);
-    }
-
-    private void BuildMoveToCategoryMenu(List<Channel> channels)
-    {
-        moveToCategoryToolStripMenuItem.DropDownItems.Clear();
-
-        var newCategoryItem = new ToolStripMenuItem("New Category...");
-        newCategoryItem.Click += (_, _) =>
-        {
-            if (PromptForNewCategory() is Category category)
-            {
-                MoveChannelsTo(channels, category, null);
-            }
-        };
-
-        moveToCategoryToolStripMenuItem.DropDownItems.Add(newCategoryItem);
-        moveToCategoryToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
-
-        foreach (var category in playlist.Categories)
-        {
-            var item = new ToolStripMenuItem(category.Title.Replace("&", "&&"))
-            {
-                Enabled = channels.Any(c => c.Category != category),
-            };
-
-            item.Click += (_, _) => MoveChannelsTo(channels, category, null);
-            moveToCategoryToolStripMenuItem.DropDownItems.Add(item);
-        }
-
-        ThemeManager.ApplyToolStrip(contextMenuChannels);
+        var target = dialog.SelectedCategory ?? PlaylistTools.FindCategory(playlist, dialog.NewCategoryName!) ?? new Category(dialog.NewCategoryName!);
+        MoveChannelsTo(channels, target, null);
     }
 
     #endregion
@@ -1173,14 +1253,14 @@ public partial class MainForm : Form
 
     private void ContextMenuChannels_Opening(object? sender, CancelEventArgs e)
     {
-        var channels = SelectedChannels;
-        e.Cancel = channels.Count == 0;
+        // Keep this cheap: it runs on every right-click, also with hundreds of thousands of rows
+        int selected = dataGridViewChannels.SelectedRowCount;
+        e.Cancel = selected == 0 || CurrentChannel == null;
 
         if (!e.Cancel)
         {
             goToCategoryToolStripMenuItem.Visible = checkBoxSearchAllCategories.Checked;
-            moveToCategoryToolStripMenuItem.Text = channels.Count == 1 ? "Move to Category" : $"Move {channels.Count:N0} Channels to Category";
-            BuildMoveToCategoryMenu(channels);
+            moveToCategoryToolStripMenuItem.Text = selected == 1 ? "Move to Category..." : $"Move {selected:N0} Channels to Category...";
         }
     }
 
@@ -1397,14 +1477,19 @@ public partial class MainForm : Form
 
             // Insert in front of the first row below the drop position that is not being dragged itself
             var visible = VisibleChannels;
+            var dragged = channelData.Channels.ToHashSet();
             int row = target.Row;
-            while (row < visible.Count && channelData.Channels.Contains(visible[row]))
+            while (row < visible.Count && dragged.Contains(visible[row]))
             {
                 row++;
             }
 
             var before = row < visible.Count ? visible[row] : null;
-            var above = visible.Take(target.Row).LastOrDefault(c => !channelData.Channels.Contains(c));
+            Channel? above = null;
+            for (int i = Math.Min(target.Row, visible.Count) - 1; i >= 0 && above == null; i--)
+            {
+                above = dragged.Contains(visible[i]) ? null : visible[i];
+            }
             var category = before?.Category ?? above?.Category ?? selectedCategory ?? channelData.Channels[0].Category;
 
             MoveChannelsTo(channelData.Channels, category, before);
@@ -1415,10 +1500,13 @@ public partial class MainForm : Form
             var before = target.Row < visible.Count ? visible[target.Row] : null;
 
             CommitGridEdits();
-            PlaylistTools.MoveCategoryBefore(playlist, categoryData.Category, before);
-            selectedCategory = categoryData.Category;
-            MarkDirty();
-            RefreshCategoryList();
+
+            if (PlaylistTools.MoveCategoryBefore(playlist, categoryData.Category, before))
+            {
+                selectedCategory = categoryData.Category;
+                MarkDirty();
+                RefreshCategoryList();
+            }
         }
     }
 
@@ -1443,7 +1531,12 @@ public partial class MainForm : Form
         {
             if (grid == dataGridViewCategories)
             {
-                return hit.RowIndex >= 0 ? new DropTarget(grid, hit.RowIndex, true) : null;
+                // Dropping channels on the category they are already in would do nothing
+                bool isOtherCategory = hit.RowIndex >= 0 && hit.RowIndex < visibleCategories.Count &&
+                    data.GetData(typeof(ChannelDragData)) is ChannelDragData dragged &&
+                    dragged.Channels.Any(c => c.Category != visibleCategories[hit.RowIndex]);
+
+                return isOtherCategory ? new DropTarget(grid, hit.RowIndex, true) : null;
             }
 
             bool hasTargetCategory = grid.Rows.Count > 0 || selectedCategory != null;
@@ -1640,17 +1733,21 @@ public partial class MainForm : Form
 
     private async void LoadEpgFromUrlToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        using var dialog = new OpenURLDialog("Load EPG from URL", settings.LastEpgUrl, playlist.EpgUrls);
+        // Provider EPG URLs carry the account password: keep them out of the history and the settings file
+        using var dialog = new OpenURLDialog("Load EPG from URL", settings.LastEpgUrl, playlist.EpgUrls.Where(url => !ContainsPassword(url)));
 
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        settings.LastEpgUrl = dialog.Url;
+        settings.LastEpgUrl = ContainsPassword(dialog.Url) ? null : dialog.Url;
         settings.Save();
         await LoadEpgAsync([dialog.Url], offerToAddToHeader: true);
     }
+
+    private static bool ContainsPassword(string url) =>
+        url.Contains("password=", StringComparison.OrdinalIgnoreCase);
 
     private async void LoadEpgFromFileToolStripMenuItem_Click(object sender, EventArgs e)
     {

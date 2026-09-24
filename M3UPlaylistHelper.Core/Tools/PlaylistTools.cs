@@ -52,15 +52,22 @@ public static class PlaylistTools
     /// <summary>
     /// Moves <paramref name="category"/> in front of <paramref name="before"/>, or to the end if it is null.
     /// </summary>
-    public static void MoveCategoryBefore(Playlist playlist, Category category, Category? before)
+    /// <returns>false if the order did not change.</returns>
+    public static bool MoveCategoryBefore(Playlist playlist, Category category, Category? before)
     {
-        if (category == before || !playlist.Categories.Remove(category))
+        int current = playlist.Categories.IndexOf(category);
+        int next = current + 1;
+        bool alreadyThere = before == null ? next == playlist.Categories.Count : next < playlist.Categories.Count && playlist.Categories[next] == before;
+
+        if (current < 0 || category == before || alreadyThere)
         {
-            return;
+            return false;
         }
 
+        playlist.Categories.RemoveAt(current);
         int index = before == null ? -1 : playlist.Categories.IndexOf(before);
         playlist.Categories.Insert(index < 0 ? playlist.Categories.Count : index, category);
+        return true;
     }
 
     /// <summary>
@@ -71,36 +78,77 @@ public static class PlaylistTools
     /// <returns>false if nothing was moved.</returns>
     public static bool MoveChannels(Playlist playlist, IReadOnlyCollection<Channel> channels, Category target, Channel? before)
     {
-        if (channels.Count == 0 || (before != null && channels.Contains(before)))
+        // Sets and RemoveAll keep this linear, moving thousands of channels out of a huge category must not be quadratic
+        var moving = new HashSet<Channel>(channels);
+
+        if (moving.Count == 0 || (before != null && moving.Contains(before)))
         {
             return false;
         }
 
-        var sourceCategories = channels.Select(c => c.Category).Distinct().ToList();
+        var ordered = channels.Distinct().ToList();
 
-        foreach (var channel in channels)
+        if (IsAlreadyInPlace(ordered, target, before))
         {
-            channel.Category.Channels.Remove(channel);
+            return false;
+        }
+
+        var sourceCategories = moving.Select(c => c.Category).Distinct().ToList();
+
+        foreach (var category in sourceCategories)
+        {
+            category.Channels.RemoveAll(moving.Contains);
+        }
+
+        foreach (var channel in ordered)
+        {
             channel.Category = target;
         }
 
         int index = before == null ? -1 : target.Channels.IndexOf(before);
-        target.Channels.InsertRange(index < 0 ? target.Channels.Count : index, channels);
+        target.Channels.InsertRange(index < 0 ? target.Channels.Count : index, ordered);
 
         if (!playlist.Categories.Contains(target))
         {
             playlist.Categories.Add(target);
         }
 
-        foreach (var category in sourceCategories)
+        var emptied = sourceCategories.Where(c => c != target && c.Channels.Count == 0).ToHashSet();
+        if (emptied.Count > 0)
         {
-            if (category != target && category.Channels.Count == 0)
-            {
-                playlist.Categories.Remove(category);
-            }
+            playlist.Categories.RemoveAll(emptied.Contains);
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Whether the channels already sit, in this order, right in front of <paramref name="before"/> (or at the end).
+    /// </summary>
+    private static bool IsAlreadyInPlace(List<Channel> channels, Category target, Channel? before)
+    {
+        if (channels.Any(c => c.Category != target))
+        {
+            return false;
+        }
+
+        int start = target.Channels.IndexOf(channels[0]);
+        int end = start + channels.Count;
+
+        if (start < 0 || end > target.Channels.Count)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < channels.Count; i++)
+        {
+            if (target.Channels[start + i] != channels[i])
+            {
+                return false;
+            }
+        }
+
+        return before == null ? end == target.Channels.Count : end < target.Channels.Count && target.Channels[end] == before;
     }
 
     /// <summary>
@@ -133,15 +181,20 @@ public static class PlaylistTools
         }
 
         int count = 0;
+        var categoriesByTitle = new Dictionary<string, Category>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var category in target.Categories)
+        {
+            categoriesByTitle.TryAdd(category.Title, category);
+        }
 
         foreach (var sourceCategory in source.Categories)
         {
-            var category = FindCategory(target, sourceCategory.Title);
-
-            if (category == null)
+            if (!categoriesByTitle.TryGetValue(sourceCategory.Title, out var category))
             {
                 category = new Category(sourceCategory.Title) { IsIncluded = sourceCategory.IsIncluded };
                 target.Categories.Add(category);
+                categoriesByTitle[category.Title] = category;
             }
 
             foreach (var channel in sourceCategory.Channels)

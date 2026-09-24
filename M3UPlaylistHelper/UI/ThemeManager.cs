@@ -132,7 +132,8 @@ public static class ThemeManager
         {
             item.ForeColor = Current.Text;
 
-            if (item is ToolStripDropDownItem dropDownItem)
+            // Reading DropDown on an item without children would create an empty drop-down for it, check first
+            if (item is ToolStripDropDownItem { HasDropDownItems: true } dropDownItem)
             {
                 dropDownItem.DropDown.BackColor = Current.IsDark ? Current.Surface : default;
                 ApplyToolStripItems(dropDownItem.DropDownItems);
@@ -260,6 +261,9 @@ public static class ThemeManager
             {
                 DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkModeBefore20H1, ref value, sizeof(int));
             }
+
+            // Windows 10 only repaints the title bar of a visible window after its frame changes
+            SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
         }
         catch (Exception)
         {
@@ -299,6 +303,15 @@ public static class ThemeManager
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpFrameChanged = 0x0020;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
 
     [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
     private static extern int SetWindowTheme(IntPtr hwnd, string? subAppName, string? subIdList);

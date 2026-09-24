@@ -13,10 +13,16 @@ public static class LogoCache
 
     private const int MaxParallelDownloads = 8;
 
+    // About 10 KB per thumbnail, so this caps the cache at roughly 30 MB however far the user scrolls
+    private const int MaxCachedLogos = 3000;
+
     private static readonly HttpClient httpClient = CreateHttpClient();
 
     // A null value means the download was attempted and failed, so it is not retried
     private static readonly ConcurrentDictionary<string, Image?> logos = new();
+
+    // Insertion order, oldest first, for evicting when the cache is full
+    private static readonly ConcurrentQueue<string> insertionOrder = new();
 
     private static HttpClient CreateHttpClient()
     {
@@ -52,7 +58,7 @@ public static class LogoCache
         {
             await Parallel.ForEachAsync(pending, options, async (url, token) =>
             {
-                logos[url] = await DownloadThumbnailAsync(url, token);
+                Add(url, await DownloadThumbnailAsync(url, token));
 
                 if (Interlocked.Increment(ref loaded) % MaxParallelDownloads == 0)
                 {
@@ -66,6 +72,23 @@ public static class LogoCache
         }
 
         onBatchLoaded();
+    }
+
+    private static void Add(string url, Image? image)
+    {
+        if (!logos.TryAdd(url, image))
+        {
+            return;
+        }
+
+        insertionOrder.Enqueue(url);
+
+        // Evicted images are not disposed: the grid may be painting one on the UI thread right now.
+        // Once nothing references them the garbage collector frees them.
+        while (logos.Count > MaxCachedLogos && insertionOrder.TryDequeue(out var oldest))
+        {
+            logos.TryRemove(oldest, out _);
+        }
     }
 
     private static async Task<Image?> DownloadThumbnailAsync(string url, CancellationToken cancellationToken)
