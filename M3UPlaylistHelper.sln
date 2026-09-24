@@ -5,6 +5,10 @@ VisualStudioVersion = 17.10.35201.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M3UPlaylistHelper", "M3UPlaylistHelper\M3UPlaylistHelper.csproj", "{74B4CDBC-3293-4572-A3B0-15A42164366B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M3UPlaylistHelper.Core", "M3UPlaylistHelper.Core\M3UPlaylistHelper.Core.csproj", "{FB45F69E-181E-48AA-8275-ACDCCAD49F55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M3UPlaylistHelper.Tests", "M3UPlaylistHelper.Tests\M3UPlaylistHelper.Tests.csproj", "{3C5B838F-3E21-41B1-99E3-4D0920E096CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{74B4CDBC-3293-4572-A3B0-15A42164366B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{74B4CDBC-3293-4572-A3B0-15A42164366B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{74B4CDBC-3293-4572-A3B0-15A42164366B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB45F69E-181E-48AA-8275-ACDCCAD49F55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB45F69E-181E-48AA-8275-ACDCCAD49F55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB45F69E-181E-48AA-8275-ACDCCAD49F55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB45F69E-181E-48AA-8275-ACDCCAD49F55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C5B838F-3E21-41B1-99E3-4D0920E096CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C5B838F-3E21-41B1-99E3-4D0920E096CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C5B838F-3E21-41B1-99E3-4D0920E096CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C5B838F-3E21-41B1-99E3-4D0920E096CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
