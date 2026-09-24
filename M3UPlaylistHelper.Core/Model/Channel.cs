@@ -68,16 +68,7 @@ public class Channel
         IsIncluded = true;
     }
 
-    public string? GetAttribute(string name)
-    {
-        foreach (var attribute in Attributes)
-        {
-            if (string.Equals(attribute.Key, name, StringComparison.OrdinalIgnoreCase))
-            {
-                return string.IsNullOrWhiteSpace(attribute.Value) ? null : attribute.Value;
-            }
-        }
+    public string? GetAttribute(string name) => Attributes.GetValue(name);
 
-        return null;
-    }
+    public void SetAttribute(string name, string value) => Attributes.SetValue(name, value);
 }

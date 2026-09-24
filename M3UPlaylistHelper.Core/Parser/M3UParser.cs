@@ -1,7 +1,6 @@
 namespace M3UPlaylistHelper.Parser;
 
 using M3UPlaylistHelper.Model;
-using System.Net;
 using System.Text;
 
 public static class M3UParser
@@ -11,8 +10,6 @@ public static class M3UParser
     private const string HeaderTag = "#EXTM3U";
     private const string ExtInfTag = "#EXTINF:";
     private const string ExtGrpTag = "#EXTGRP:";
-
-    private static readonly HttpClient httpClient = CreateHttpClient();
 
     private static readonly Encoding strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
@@ -24,31 +21,11 @@ public static class M3UParser
         return Encoding.GetEncoding(1252);
     }
 
-    private static HttpClient CreateHttpClient()
-    {
-        var handler = new HttpClientHandler
-        {
-            AutomaticDecompression = DecompressionMethods.All,
-        };
-
-        var client = new HttpClient(handler)
-        {
-            Timeout = TimeSpan.FromMinutes(2),
-        };
-
-        // Some providers block requests without a user agent
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("M3UPlaylistHelper");
-        return client;
-    }
-
     public static async Task<Playlist> ParseUrlAsync(string url, CancellationToken cancellationToken)
     {
-        using var response = await httpClient.GetAsync(url, cancellationToken);
+        using var response = await Http.Client.GetAsync(url, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new HttpRequestException($"The server returned {(int)response.StatusCode} ({response.ReasonPhrase}).", null, response.StatusCode);
-        }
+        Http.EnsureSuccess(response);
 
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var charset = response.Content.Headers.ContentType?.CharSet;
