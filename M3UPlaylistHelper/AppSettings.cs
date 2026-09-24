@@ -1,27 +1,55 @@
 namespace M3UPlaylistHelper;
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 /// <summary>
-/// User preferences, stored in %AppData%\M3UPlaylistHelper\settings.json.
+/// User preferences, stored in %AppData%\M3UPlaylistHelper\settings.json, or next to the executable in portable mode.
 /// </summary>
 public class AppSettings
 {
     private const int MaxRecentItems = 10;
 
-    private static readonly string settingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "M3UPlaylistHelper",
-        "settings.json");
+    /// <summary>
+    /// When a file with this name is next to the executable, settings are kept there instead of in %AppData%,
+    /// so the app can run from a USB stick without leaving anything behind.
+    /// </summary>
+    public const string PortableMarkerFile = "portable.txt";
+
+    private static readonly string settingsPath = GetSettingsPath();
 
     private static readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
+
+    public static bool IsPortable { get; private set; }
 
     /// <summary>
     /// Recently opened files and URLs, most recent first.
     /// </summary>
     public List<string> RecentItems { get; set; } = [];
 
+    /// <summary>
+    /// The last URL typed in the Open URL dialog, even if loading it failed, so a typo can be fixed.
+    /// </summary>
+    public string? LastUrl { get; set; }
+
+    public string? LastEpgUrl { get; set; }
+
     public bool DownloadLogos { get; set; } = true;
+
+    /// <summary>
+    /// "System", "Light" or "Dark".
+    /// </summary>
+    public string Theme { get; set; } = "System";
+
+    public string? XtreamServer { get; set; }
+    public string? XtreamUsername { get; set; }
+    public string? XtreamOutput { get; set; }
+
+    /// <summary>
+    /// Encrypted with Windows DPAPI, only the current Windows user can decrypt it.
+    /// </summary>
+    public string? XtreamPasswordProtected { get; set; }
 
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }
@@ -44,6 +72,43 @@ public class AppSettings
         {
             RecentItems.RemoveRange(MaxRecentItems, RecentItems.Count - MaxRecentItems);
         }
+    }
+
+    public string? GetXtreamPassword()
+    {
+        if (string.IsNullOrEmpty(XtreamPasswordProtected))
+        {
+            return null;
+        }
+
+        try
+        {
+            var bytes = ProtectedData.Unprotect(Convert.FromBase64String(XtreamPasswordProtected), null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        catch (Exception)
+        {
+            // Settings copied from another user or machine
+            return null;
+        }
+    }
+
+    public void SetXtreamPassword(string? password)
+    {
+        XtreamPasswordProtected = string.IsNullOrEmpty(password)
+            ? null
+            : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(password), null, DataProtectionScope.CurrentUser));
+    }
+
+    private static string GetSettingsPath()
+    {
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, PortableMarkerFile)))
+        {
+            IsPortable = true;
+            return Path.Combine(AppContext.BaseDirectory, "settings.json");
+        }
+
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M3UPlaylistHelper", "settings.json");
     }
 
     public static AppSettings Load()

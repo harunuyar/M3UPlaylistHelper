@@ -33,6 +33,11 @@ partial class MainForm
         fileToolStripMenuItem = new ToolStripMenuItem();
         openFileToolStripMenuItem = new ToolStripMenuItem();
         openURLToolStripMenuItem = new ToolStripMenuItem();
+        openXtreamToolStripMenuItem = new ToolStripMenuItem();
+        addToPlaylistToolStripMenuItem = new ToolStripMenuItem();
+        addFileToolStripMenuItem = new ToolStripMenuItem();
+        addURLToolStripMenuItem = new ToolStripMenuItem();
+        addXtreamToolStripMenuItem = new ToolStripMenuItem();
         recentToolStripMenuItem = new ToolStripMenuItem();
         toolStripSeparatorFile1 = new ToolStripSeparator();
         saveToolStripMenuItem = new ToolStripMenuItem();
@@ -47,11 +52,26 @@ partial class MainForm
         toolStripSeparatorEdit2 = new ToolStripSeparator();
         saveSelectionProfileToolStripMenuItem = new ToolStripMenuItem();
         applySelectionProfileToolStripMenuItem = new ToolStripMenuItem();
+        epgToolStripMenuItem = new ToolStripMenuItem();
+        loadProviderEpgToolStripMenuItem = new ToolStripMenuItem();
+        loadEpgFromUrlToolStripMenuItem = new ToolStripMenuItem();
+        loadEpgFromFileToolStripMenuItem = new ToolStripMenuItem();
+        toolStripSeparatorEpg1 = new ToolStripSeparator();
+        excludeChannelsWithoutEpgToolStripMenuItem = new ToolStripMenuItem();
+        fillTvgIdsToolStripMenuItem = new ToolStripMenuItem();
+        toolStripSeparatorEpg2 = new ToolStripSeparator();
+        clearEpgToolStripMenuItem = new ToolStripMenuItem();
+        viewToolStripMenuItem = new ToolStripMenuItem();
+        themeToolStripMenuItem = new ToolStripMenuItem();
+        themeSystemToolStripMenuItem = new ToolStripMenuItem();
+        themeLightToolStripMenuItem = new ToolStripMenuItem();
+        themeDarkToolStripMenuItem = new ToolStripMenuItem();
         helpToolStripMenuItem = new ToolStripMenuItem();
         howToUseToolStripMenuItem = new ToolStripMenuItem();
         aboutToolStripMenuItem = new ToolStripMenuItem();
         statusStrip = new StatusStrip();
         toolStripStatusLabel = new ToolStripStatusLabel();
+        toolStripAccountLabel = new ToolStripStatusLabel();
         toolStripProgressBar = new ToolStripProgressBar();
         mainPanel = new Panel();
         splitContainer = new SplitContainer();
@@ -60,7 +80,7 @@ partial class MainForm
         labelCategories = new Label();
         buttonSelectAllCategories = new Button();
         textBoxCategoryFilter = new TextBox();
-        dataGridViewCategories = new DataGridView();
+        dataGridViewCategories = new DragDataGridView();
         columnCategoryIncluded = new DataGridViewCheckBoxColumn();
         columnCategoryTitle = new DataGridViewTextBoxColumn();
         columnCategoryCount = new DataGridViewTextBoxColumn();
@@ -76,16 +96,19 @@ partial class MainForm
         buttonClearAllChannels = new Button();
         buttonSelectAllChannels = new Button();
         labelSelectedCategory = new Label();
-        dataGridViewChannels = new DataGridView();
+        dataGridViewChannels = new DragDataGridView();
         columnChannelIncluded = new DataGridViewCheckBoxColumn();
         columnChannelLogo = new DataGridViewImageColumn();
         columnChannelName = new DataGridViewTextBoxColumn();
+        columnChannelEpg = new DataGridViewTextBoxColumn();
         columnChannelCategory = new DataGridViewTextBoxColumn();
         columnChannelUrl = new DataGridViewTextBoxColumn();
         contextMenuChannels = new ContextMenuStrip(components);
         playChannelToolStripMenuItem = new ToolStripMenuItem();
         copyChannelUrlToolStripMenuItem = new ToolStripMenuItem();
         copyChannelNameToolStripMenuItem = new ToolStripMenuItem();
+        toolStripSeparatorChannels = new ToolStripSeparator();
+        moveToCategoryToolStripMenuItem = new ToolStripMenuItem();
         goToCategoryToolStripMenuItem = new ToolStripMenuItem();
         menuStrip.SuspendLayout();
         statusStrip.SuspendLayout();
@@ -103,7 +126,7 @@ partial class MainForm
         // menuStrip
         //
         menuStrip.ImageScalingSize = new Size(24, 24);
-        menuStrip.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, helpToolStripMenuItem });
+        menuStrip.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, epgToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem });
         menuStrip.Location = new Point(0, 0);
         menuStrip.Name = "menuStrip";
         menuStrip.Size = new Size(1715, 33);
@@ -112,7 +135,7 @@ partial class MainForm
         //
         // fileToolStripMenuItem
         //
-        fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openFileToolStripMenuItem, openURLToolStripMenuItem, recentToolStripMenuItem, toolStripSeparatorFile1, saveToolStripMenuItem, saveAsToolStripMenuItem, toolStripSeparatorFile2, exitToolStripMenuItem });
+        fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openFileToolStripMenuItem, openURLToolStripMenuItem, openXtreamToolStripMenuItem, addToPlaylistToolStripMenuItem, recentToolStripMenuItem, toolStripSeparatorFile1, saveToolStripMenuItem, saveAsToolStripMenuItem, toolStripSeparatorFile2, exitToolStripMenuItem });
         fileToolStripMenuItem.Name = "fileToolStripMenuItem";
         fileToolStripMenuItem.Size = new Size(54, 29);
         fileToolStripMenuItem.Text = "&File";
@@ -132,6 +155,43 @@ partial class MainForm
         openURLToolStripMenuItem.Size = new Size(320, 34);
         openURLToolStripMenuItem.Text = "Open &URL...";
         openURLToolStripMenuItem.Click += OpenURLToolStripMenuItem_Click;
+        //
+        // openXtreamToolStripMenuItem
+        //
+        openXtreamToolStripMenuItem.Name = "openXtreamToolStripMenuItem";
+        openXtreamToolStripMenuItem.Size = new Size(320, 34);
+        openXtreamToolStripMenuItem.Text = "Open &Xtream Codes...";
+        openXtreamToolStripMenuItem.Click += OpenXtreamToolStripMenuItem_Click;
+        //
+        // addToPlaylistToolStripMenuItem
+        //
+        addToPlaylistToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addFileToolStripMenuItem, addURLToolStripMenuItem, addXtreamToolStripMenuItem });
+        addToPlaylistToolStripMenuItem.Name = "addToPlaylistToolStripMenuItem";
+        addToPlaylistToolStripMenuItem.Size = new Size(320, 34);
+        addToPlaylistToolStripMenuItem.Text = "A&dd to Current Playlist";
+        //
+        // addFileToolStripMenuItem
+        //
+        addFileToolStripMenuItem.Name = "addFileToolStripMenuItem";
+        addFileToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Shift | Keys.O;
+        addFileToolStripMenuItem.Size = new Size(380, 34);
+        addFileToolStripMenuItem.Text = "Playlist &File...";
+        addFileToolStripMenuItem.Click += AddFileToolStripMenuItem_Click;
+        //
+        // addURLToolStripMenuItem
+        //
+        addURLToolStripMenuItem.Name = "addURLToolStripMenuItem";
+        addURLToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Shift | Keys.U;
+        addURLToolStripMenuItem.Size = new Size(380, 34);
+        addURLToolStripMenuItem.Text = "Playlist &URL...";
+        addURLToolStripMenuItem.Click += AddURLToolStripMenuItem_Click;
+        //
+        // addXtreamToolStripMenuItem
+        //
+        addXtreamToolStripMenuItem.Name = "addXtreamToolStripMenuItem";
+        addXtreamToolStripMenuItem.Size = new Size(380, 34);
+        addXtreamToolStripMenuItem.Text = "&Xtream Codes...";
+        addXtreamToolStripMenuItem.Click += AddXtreamToolStripMenuItem_Click;
         //
         // recentToolStripMenuItem
         //
@@ -225,6 +285,101 @@ partial class MainForm
         applySelectionProfileToolStripMenuItem.Text = "&Apply Selection Profile...";
         applySelectionProfileToolStripMenuItem.Click += ApplySelectionProfileToolStripMenuItem_Click;
         //
+        // epgToolStripMenuItem
+        //
+        epgToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { loadProviderEpgToolStripMenuItem, loadEpgFromUrlToolStripMenuItem, loadEpgFromFileToolStripMenuItem, toolStripSeparatorEpg1, excludeChannelsWithoutEpgToolStripMenuItem, fillTvgIdsToolStripMenuItem, toolStripSeparatorEpg2, clearEpgToolStripMenuItem });
+        epgToolStripMenuItem.Name = "epgToolStripMenuItem";
+        epgToolStripMenuItem.Size = new Size(62, 29);
+        epgToolStripMenuItem.Text = "E&PG";
+        epgToolStripMenuItem.DropDownOpening += EpgToolStripMenuItem_DropDownOpening;
+        //
+        // loadProviderEpgToolStripMenuItem
+        //
+        loadProviderEpgToolStripMenuItem.Name = "loadProviderEpgToolStripMenuItem";
+        loadProviderEpgToolStripMenuItem.Size = new Size(420, 34);
+        loadProviderEpgToolStripMenuItem.Text = "Load EPG from &Playlist / Provider";
+        loadProviderEpgToolStripMenuItem.Click += LoadProviderEpgToolStripMenuItem_Click;
+        //
+        // loadEpgFromUrlToolStripMenuItem
+        //
+        loadEpgFromUrlToolStripMenuItem.Name = "loadEpgFromUrlToolStripMenuItem";
+        loadEpgFromUrlToolStripMenuItem.Size = new Size(420, 34);
+        loadEpgFromUrlToolStripMenuItem.Text = "Load EPG from &URL...";
+        loadEpgFromUrlToolStripMenuItem.Click += LoadEpgFromUrlToolStripMenuItem_Click;
+        //
+        // loadEpgFromFileToolStripMenuItem
+        //
+        loadEpgFromFileToolStripMenuItem.Name = "loadEpgFromFileToolStripMenuItem";
+        loadEpgFromFileToolStripMenuItem.Size = new Size(420, 34);
+        loadEpgFromFileToolStripMenuItem.Text = "Load EPG from &File...";
+        loadEpgFromFileToolStripMenuItem.Click += LoadEpgFromFileToolStripMenuItem_Click;
+        //
+        // toolStripSeparatorEpg1
+        //
+        toolStripSeparatorEpg1.Name = "toolStripSeparatorEpg1";
+        toolStripSeparatorEpg1.Size = new Size(417, 6);
+        //
+        // excludeChannelsWithoutEpgToolStripMenuItem
+        //
+        excludeChannelsWithoutEpgToolStripMenuItem.Name = "excludeChannelsWithoutEpgToolStripMenuItem";
+        excludeChannelsWithoutEpgToolStripMenuItem.Size = new Size(420, 34);
+        excludeChannelsWithoutEpgToolStripMenuItem.Text = "&Exclude Channels Without EPG";
+        excludeChannelsWithoutEpgToolStripMenuItem.Click += ExcludeChannelsWithoutEpgToolStripMenuItem_Click;
+        //
+        // fillTvgIdsToolStripMenuItem
+        //
+        fillTvgIdsToolStripMenuItem.Name = "fillTvgIdsToolStripMenuItem";
+        fillTvgIdsToolStripMenuItem.Size = new Size(420, 34);
+        fillTvgIdsToolStripMenuItem.Text = "Fill &Missing tvg-id by Channel Name";
+        fillTvgIdsToolStripMenuItem.Click += FillTvgIdsToolStripMenuItem_Click;
+        //
+        // toolStripSeparatorEpg2
+        //
+        toolStripSeparatorEpg2.Name = "toolStripSeparatorEpg2";
+        toolStripSeparatorEpg2.Size = new Size(417, 6);
+        //
+        // clearEpgToolStripMenuItem
+        //
+        clearEpgToolStripMenuItem.Name = "clearEpgToolStripMenuItem";
+        clearEpgToolStripMenuItem.Size = new Size(420, 34);
+        clearEpgToolStripMenuItem.Text = "&Clear EPG";
+        clearEpgToolStripMenuItem.Click += ClearEpgToolStripMenuItem_Click;
+        //
+        // viewToolStripMenuItem
+        //
+        viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { themeToolStripMenuItem });
+        viewToolStripMenuItem.Name = "viewToolStripMenuItem";
+        viewToolStripMenuItem.Size = new Size(65, 29);
+        viewToolStripMenuItem.Text = "&View";
+        //
+        // themeToolStripMenuItem
+        //
+        themeToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { themeSystemToolStripMenuItem, themeLightToolStripMenuItem, themeDarkToolStripMenuItem });
+        themeToolStripMenuItem.Name = "themeToolStripMenuItem";
+        themeToolStripMenuItem.Size = new Size(270, 34);
+        themeToolStripMenuItem.Text = "&Theme";
+        //
+        // themeSystemToolStripMenuItem
+        //
+        themeSystemToolStripMenuItem.Name = "themeSystemToolStripMenuItem";
+        themeSystemToolStripMenuItem.Size = new Size(270, 34);
+        themeSystemToolStripMenuItem.Text = "Use &System Setting";
+        themeSystemToolStripMenuItem.Click += ThemeToolStripMenuItem_Click;
+        //
+        // themeLightToolStripMenuItem
+        //
+        themeLightToolStripMenuItem.Name = "themeLightToolStripMenuItem";
+        themeLightToolStripMenuItem.Size = new Size(270, 34);
+        themeLightToolStripMenuItem.Text = "&Light";
+        themeLightToolStripMenuItem.Click += ThemeToolStripMenuItem_Click;
+        //
+        // themeDarkToolStripMenuItem
+        //
+        themeDarkToolStripMenuItem.Name = "themeDarkToolStripMenuItem";
+        themeDarkToolStripMenuItem.Size = new Size(270, 34);
+        themeDarkToolStripMenuItem.Text = "&Dark";
+        themeDarkToolStripMenuItem.Click += ThemeToolStripMenuItem_Click;
+        //
         // helpToolStripMenuItem
         //
         helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { howToUseToolStripMenuItem, aboutToolStripMenuItem });
@@ -250,7 +405,7 @@ partial class MainForm
         // statusStrip
         //
         statusStrip.ImageScalingSize = new Size(24, 24);
-        statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel, toolStripProgressBar });
+        statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel, toolStripAccountLabel, toolStripProgressBar });
         statusStrip.Location = new Point(0, 935);
         statusStrip.Name = "statusStrip";
         statusStrip.Size = new Size(1715, 32);
@@ -263,6 +418,12 @@ partial class MainForm
         toolStripStatusLabel.Size = new Size(1698, 25);
         toolStripStatusLabel.Spring = true;
         toolStripStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        //
+        // toolStripAccountLabel
+        //
+        toolStripAccountLabel.Name = "toolStripAccountLabel";
+        toolStripAccountLabel.Size = new Size(0, 25);
+        toolStripAccountLabel.Visible = false;
         //
         // toolStripProgressBar
         //
@@ -366,6 +527,7 @@ partial class MainForm
         //
         // dataGridViewCategories
         //
+        dataGridViewCategories.AllowDrop = true;
         dataGridViewCategories.AllowUserToAddRows = false;
         dataGridViewCategories.AllowUserToDeleteRows = false;
         dataGridViewCategories.AllowUserToResizeRows = false;
@@ -392,6 +554,11 @@ partial class MainForm
         dataGridViewCategories.SelectionChanged += DataGridViewCategories_SelectionChanged;
         dataGridViewCategories.KeyDown += DataGridView_KeyDown;
         dataGridViewCategories.KeyUp += DataGridView_KeyUp;
+        dataGridViewCategories.DragEnter += DataGridView_DragOver;
+        dataGridViewCategories.DragOver += DataGridView_DragOver;
+        dataGridViewCategories.DragDrop += DataGridView_DragDrop;
+        dataGridViewCategories.DragLeave += DataGridView_DragLeave;
+        dataGridViewCategories.RowPostPaint += DataGridView_RowPostPaint;
         //
         // columnCategoryIncluded
         //
@@ -538,13 +705,14 @@ partial class MainForm
         //
         // dataGridViewChannels
         //
+        dataGridViewChannels.AllowDrop = true;
         dataGridViewChannels.AllowUserToAddRows = false;
         dataGridViewChannels.AllowUserToDeleteRows = false;
         dataGridViewChannels.AllowUserToResizeRows = false;
         dataGridViewChannels.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         dataGridViewChannels.BackgroundColor = SystemColors.Window;
         dataGridViewChannels.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-        dataGridViewChannels.Columns.AddRange(new DataGridViewColumn[] { columnChannelIncluded, columnChannelLogo, columnChannelName, columnChannelCategory, columnChannelUrl });
+        dataGridViewChannels.Columns.AddRange(new DataGridViewColumn[] { columnChannelIncluded, columnChannelLogo, columnChannelName, columnChannelEpg, columnChannelCategory, columnChannelUrl });
         dataGridViewChannels.ContextMenuStrip = contextMenuChannels;
         dataGridViewChannels.GridColor = SystemColors.Control;
         dataGridViewChannels.Location = new Point(0, 65);
@@ -563,6 +731,11 @@ partial class MainForm
         dataGridViewChannels.Scroll += DataGridViewChannels_Scroll;
         dataGridViewChannels.KeyDown += DataGridView_KeyDown;
         dataGridViewChannels.KeyUp += DataGridView_KeyUp;
+        dataGridViewChannels.DragEnter += DataGridView_DragOver;
+        dataGridViewChannels.DragOver += DataGridView_DragOver;
+        dataGridViewChannels.DragDrop += DataGridView_DragDrop;
+        dataGridViewChannels.DragLeave += DataGridView_DragLeave;
+        dataGridViewChannels.RowPostPaint += DataGridView_RowPostPaint;
         dataGridViewChannels.Resize += DataGridViewChannels_Resize;
         //
         // columnChannelIncluded
@@ -592,6 +765,16 @@ partial class MainForm
         columnChannelName.ToolTipText = "Double-click or press F2 to rename";
         columnChannelName.Width = 350;
         //
+        // columnChannelEpg
+        //
+        columnChannelEpg.HeaderText = "EPG";
+        columnChannelEpg.MinimumWidth = 8;
+        columnChannelEpg.Name = "columnChannelEpg";
+        columnChannelEpg.ReadOnly = true;
+        columnChannelEpg.ToolTipText = "Whether the loaded EPG has program information for the channel's tvg-id";
+        columnChannelEpg.Visible = false;
+        columnChannelEpg.Width = 70;
+        //
         // columnChannelCategory
         //
         columnChannelCategory.DataPropertyName = "CategoryTitle";
@@ -614,7 +797,7 @@ partial class MainForm
         // contextMenuChannels
         //
         contextMenuChannels.ImageScalingSize = new Size(24, 24);
-        contextMenuChannels.Items.AddRange(new ToolStripItem[] { playChannelToolStripMenuItem, copyChannelUrlToolStripMenuItem, copyChannelNameToolStripMenuItem, goToCategoryToolStripMenuItem });
+        contextMenuChannels.Items.AddRange(new ToolStripItem[] { playChannelToolStripMenuItem, copyChannelUrlToolStripMenuItem, copyChannelNameToolStripMenuItem, toolStripSeparatorChannels, moveToCategoryToolStripMenuItem, goToCategoryToolStripMenuItem });
         contextMenuChannels.Name = "contextMenuChannels";
         contextMenuChannels.Size = new Size(241, 132);
         contextMenuChannels.Opening += ContextMenuChannels_Opening;
@@ -640,6 +823,17 @@ partial class MainForm
         copyChannelNameToolStripMenuItem.Size = new Size(240, 32);
         copyChannelNameToolStripMenuItem.Text = "Copy Name";
         copyChannelNameToolStripMenuItem.Click += CopyChannelNameToolStripMenuItem_Click;
+        //
+        // toolStripSeparatorChannels
+        //
+        toolStripSeparatorChannels.Name = "toolStripSeparatorChannels";
+        toolStripSeparatorChannels.Size = new Size(237, 6);
+        //
+        // moveToCategoryToolStripMenuItem
+        //
+        moveToCategoryToolStripMenuItem.Name = "moveToCategoryToolStripMenuItem";
+        moveToCategoryToolStripMenuItem.Size = new Size(240, 32);
+        moveToCategoryToolStripMenuItem.Text = "Move to Category";
         //
         // goToCategoryToolStripMenuItem
         //
@@ -687,6 +881,11 @@ partial class MainForm
     private ToolStripMenuItem fileToolStripMenuItem;
     private ToolStripMenuItem openFileToolStripMenuItem;
     private ToolStripMenuItem openURLToolStripMenuItem;
+    private ToolStripMenuItem openXtreamToolStripMenuItem;
+    private ToolStripMenuItem addToPlaylistToolStripMenuItem;
+    private ToolStripMenuItem addFileToolStripMenuItem;
+    private ToolStripMenuItem addURLToolStripMenuItem;
+    private ToolStripMenuItem addXtreamToolStripMenuItem;
     private ToolStripMenuItem recentToolStripMenuItem;
     private ToolStripSeparator toolStripSeparatorFile1;
     private ToolStripMenuItem saveToolStripMenuItem;
@@ -701,17 +900,32 @@ partial class MainForm
     private ToolStripSeparator toolStripSeparatorEdit2;
     private ToolStripMenuItem saveSelectionProfileToolStripMenuItem;
     private ToolStripMenuItem applySelectionProfileToolStripMenuItem;
+    private ToolStripMenuItem epgToolStripMenuItem;
+    private ToolStripMenuItem loadProviderEpgToolStripMenuItem;
+    private ToolStripMenuItem loadEpgFromUrlToolStripMenuItem;
+    private ToolStripMenuItem loadEpgFromFileToolStripMenuItem;
+    private ToolStripSeparator toolStripSeparatorEpg1;
+    private ToolStripMenuItem excludeChannelsWithoutEpgToolStripMenuItem;
+    private ToolStripMenuItem fillTvgIdsToolStripMenuItem;
+    private ToolStripSeparator toolStripSeparatorEpg2;
+    private ToolStripMenuItem clearEpgToolStripMenuItem;
+    private ToolStripMenuItem viewToolStripMenuItem;
+    private ToolStripMenuItem themeToolStripMenuItem;
+    private ToolStripMenuItem themeSystemToolStripMenuItem;
+    private ToolStripMenuItem themeLightToolStripMenuItem;
+    private ToolStripMenuItem themeDarkToolStripMenuItem;
     private ToolStripMenuItem helpToolStripMenuItem;
     private ToolStripMenuItem howToUseToolStripMenuItem;
     private ToolStripMenuItem aboutToolStripMenuItem;
     private StatusStrip statusStrip;
     private ToolStripStatusLabel toolStripStatusLabel;
+    private ToolStripStatusLabel toolStripAccountLabel;
     private ToolStripProgressBar toolStripProgressBar;
     private Panel mainPanel;
     private SplitContainer splitContainer;
     private Label labelCategories;
     private TextBox textBoxCategoryFilter;
-    private DataGridView dataGridViewCategories;
+    private DragDataGridView dataGridViewCategories;
     private DataGridViewCheckBoxColumn columnCategoryIncluded;
     private DataGridViewTextBoxColumn columnCategoryTitle;
     private DataGridViewTextBoxColumn columnCategoryCount;
@@ -726,10 +940,11 @@ partial class MainForm
     private Label labelSelectedCategory;
     private TextBox textBoxChannelFilter;
     private CheckBox checkBoxSearchAllCategories;
-    private DataGridView dataGridViewChannels;
+    private DragDataGridView dataGridViewChannels;
     private DataGridViewCheckBoxColumn columnChannelIncluded;
     private DataGridViewImageColumn columnChannelLogo;
     private DataGridViewTextBoxColumn columnChannelName;
+    private DataGridViewTextBoxColumn columnChannelEpg;
     private DataGridViewTextBoxColumn columnChannelCategory;
     private DataGridViewTextBoxColumn columnChannelUrl;
     private Button buttonSelectAllChannels;
@@ -740,5 +955,7 @@ partial class MainForm
     private ToolStripMenuItem playChannelToolStripMenuItem;
     private ToolStripMenuItem copyChannelUrlToolStripMenuItem;
     private ToolStripMenuItem copyChannelNameToolStripMenuItem;
+    private ToolStripSeparator toolStripSeparatorChannels;
+    private ToolStripMenuItem moveToCategoryToolStripMenuItem;
     private ToolStripMenuItem goToCategoryToolStripMenuItem;
 }

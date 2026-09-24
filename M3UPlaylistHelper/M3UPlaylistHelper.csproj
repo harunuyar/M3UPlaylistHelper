@@ -6,13 +6,17 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <!-- Allows building (not running) on Linux/macOS, e.g. in CI -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\M3UPlaylistHelper.Core\M3UPlaylistHelper.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
 </Project>
