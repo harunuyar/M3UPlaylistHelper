@@ -23,6 +23,7 @@ public partial class CategoryPickerDialog : Form
     public CategoryPickerDialog(IReadOnlyList<Category> categories, int channelCount)
     {
         InitializeComponent();
+        AppIcon.ApplyTo(this);
         ThemeManager.Apply(this);
 
         this.categories = categories;

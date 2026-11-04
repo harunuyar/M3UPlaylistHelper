@@ -1,3 +1,5 @@
+<img src="M3UPlaylistHelper/Resources/AppIcon.png" width="96" alt="" align="right">
+
 # M3U Playlist Helper
 
 A Windows app for trimming down large M3U / M3U8 IPTV playlists: pick the categories and channels you want, rename, reorder or merge them, check EPG coverage, and save a clean playlist.

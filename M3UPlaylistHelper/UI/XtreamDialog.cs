@@ -16,6 +16,7 @@ public partial class XtreamDialog : Form
     public XtreamDialog(string? server, string? username, string? password, string? output)
     {
         InitializeComponent();
+        AppIcon.ApplyTo(this);
         ThemeManager.Apply(this);
 
         textBoxServer.Text = server ?? string.Empty;
