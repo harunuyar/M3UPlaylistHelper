@@ -56,6 +56,7 @@ public partial class MainForm : Form
     public MainForm(string? startupItem = null)
     {
         InitializeComponent();
+        AppIcon.ApplyTo(this);
 
         this.startupItem = startupItem;
 

@@ -13,6 +13,7 @@ public partial class OpenURLDialog : Form
     public OpenURLDialog(string title, string? lastUrl, IEnumerable<string> history)
     {
         InitializeComponent();
+        AppIcon.ApplyTo(this);
         ThemeManager.Apply(this);
 
         Text = title;
