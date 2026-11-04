@@ -68,4 +68,4 @@ dotnet test
 
 The parsing, merging and EPG logic lives in `M3UPlaylistHelper.Core` (plain .NET 8, runs anywhere) and is covered by `M3UPlaylistHelper.Tests`. The WinForms app in `M3UPlaylistHelper` only runs on Windows.
 
-To publish a release, push a version tag: `git tag v1.2.0 && git push origin v1.2.0`. The Release workflow builds the downloads above and attaches them to a GitHub release.
+To publish a release, open **Actions > Release > Run workflow** and enter a version such as `1.2.1`, or push a version tag (`git tag v1.2.1 && git push origin v1.2.1`). The Release workflow creates the GitHub release and attaches the downloads above.

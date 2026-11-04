@@ -1,9 +1,19 @@
 name: Release
 
-# Push a version tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to publish a GitHub release
+# Publish a GitHub release, either way:
+# - Actions > Release > Run workflow, enter a version (e.g. 1.2.1); the tag v1.2.1 is created on the chosen branch
+# - or push a version tag: git tag v1.2.1 && git push origin v1.2.1
 on:
   push:
     tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 1.2.1 (creates the tag v1.2.1)'
+        required: true
+      notes:
+        description: 'Release notes (optional, shown above the generated changelog)'
+        required: false
 
 permissions:
   contents: write
@@ -11,6 +21,9 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      # Inputs go through env, never straight into scripts
+      TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +34,16 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release
 
+      - name: Check version
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3, got '$env:TAG'" }
+          "VERSION=$($env:TAG.TrimStart('v'))" >> $env:GITHUB_ENV
+
       - name: Publish
         shell: pwsh
-        env:
-          TAG: ${{ github.ref_name }}
         run: |
-          $version = $env:TAG.TrimStart('v')
+          $version = $env:VERSION
           $common = @('M3UPlaylistHelper/M3UPlaylistHelper.csproj', '--configuration', 'Release', '--runtime', 'win-x64',
                       '-p:PublishSingleFile=true', '-p:DebugType=none', "-p:Version=$version")
 
@@ -47,5 +64,10 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
+          # When started from the Actions tab, the tag doesn't exist yet and is created on this commit
+          target_commitish: ${{ github.sha }}
+          name: M3U Playlist Helper ${{ env.VERSION }}
+          body: ${{ inputs.notes }}
           files: dist/*
           generate_release_notes: true
